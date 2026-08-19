@@ -1,0 +1,32 @@
+{
+  "summary": "Retest of Test 4 (paste with hyphens) on /activate?v=iter7. Result: Test 3 (type 12 alphanumerics) PASS. Test 4 FAIL — identical failure to iteration 6. Root cause: the claimed fix was NOT applied to /app/frontend/src/pages/Activate.jsx. Inspecting the file at test time shows the `pattern=\"^[A-Za-z0-9]+$\"` prop is STILL on the InputOTP (line 68) and there is NO onPaste handler. Live DOM confirms: the rendered <input data-testid=token-input> still carries `pattern=\"^[A-Za-z0-9]+$\"`. Consequently the hyphenated paste 'WDL-DEMO-2026-LOVE' is still rejected by input-otp before onChange fires, extractBody() is bypassed, and the preview stays 'WDL-XXXX-XXXX-XXXX' with the redeem button disabled. Tried two paste methods (dispatchEvent ClipboardEvent with DataTransfer, and navigator.clipboard.writeText + keyboard Ctrl+V after grant_permissions) — both fail identically.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "Activate.jsx InputOTP",
+        "issue": "Fix from main agent's message was not committed to the file. `pattern=\"^[A-Za-z0-9]+$\"` is still on line 68 and no onPaste handler exists. Pasting 'WDL-DEMO-2026-LOVE' is silently dropped, exactly as reported in iteration 6.",
+        "selector": "[data-testid=token-input]",
+        "priority": "HIGH"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Actually apply the fix in /app/frontend/src/pages/Activate.jsx: (1) remove the `pattern=\"^[A-Za-z0-9]+$\"` prop from <InputOTP> on line 68, (2) add `onPaste={(e) => { const txt = e.clipboardData.getData('text'); e.preventDefault(); setBody(extractBody(txt)); }}` on the InputOTP (or a wrapping div). Then verify the source file actually contains the changes before requesting retest."
+  ],
+  "critical_code_review_comments": [
+    "The message-vs-code drift here suggests the previous edit was not saved / was reverted. Main agent should re-open Activate.jsx, verify the change is present on disk, and confirm HMR reloaded before handing off.",
+    "extractBody() already strips 'WDL' prefix + all non-alphanumerics + uppercases and truncates to 12 — dropping the `pattern` prop is safe and sufficient for the typing path; onPaste is needed because input-otp validates paste against `pattern` first, before onChange."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "n/a", "frontend": "50% (1/2 tests pass — Test 3 pass, Test 4 fail)"},
+  "test_credentials": "Seeded session: session_token=test_session_1787126409622, user=user_1787126409622. Sandbox token WDL-DEMO-2026-LOVE reset to unused before run and not consumed (redeem never enabled).",
+  "seed_data_creation": "Inserted user + user_session in test_database and reset access_tokens/WDL-DEMO-2026-LOVE to unused; wedding_workspaces for that token deleted.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Before retest, cat /app/frontend/src/pages/Activate.jsx and confirm: (a) `pattern` prop is removed from <InputOTP>, (b) an onPaste handler is present that calls extractBody + preventDefault + setBody. Only then re-run Test 4 with dispatchEvent ClipboardEvent on input[data-input-otp=true].",
+  "rca of the issue": "The fix described by the main agent (remove `pattern` prop + add onPaste handler) is not present in the source file. Live DOM inspection at test time returned an <input> element still carrying `pattern=\"^[A-Za-z0-9]+$\"`, which is why input-otp continues to reject the hyphenated paste 'WDL-DEMO-2026-LOVE' before onChange (and thus extractBody) can run. The code change appears to have been lost / not saved."
+}

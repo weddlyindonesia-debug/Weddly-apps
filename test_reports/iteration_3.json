@@ -1,0 +1,48 @@
+{
+  "summary": "Frontend-only retest of /activate page button-enablement bug. Result: BUG NOT FIXED. The problem statement claims the disabled condition was changed from < 19 to < 18 and maxLength to 18, but /app/frontend/src/pages/Activate.jsx STILL contains `disabled={loading || value.length < 19}` (line 59) and `maxLength={19}` (line 54). Reproduced end-to-end: seeded a session cookie, navigated to /activate, clicked [data-testid=sandbox-token-btn], input value became 'WDL-DEMO-2026-LOVE' (length=18), but [data-testid=redeem-token-button] remained DISABLED. User cannot proceed. Additionally discovered a secondary bug in formatToken() where manually typing 'WDL-DEMO-2026-LOVE' character-by-character produces the garbled value 'WDL-WDLD-EMO2-026L' — so even if the length gate is fixed, manual typing still won't yield the correct token to POST.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "Activate.jsx",
+        "issue": "Redeem button permanently disabled for the 18-char sandbox token. `disabled={loading || value.length < 19}` on line 59 and `maxLength={19}` on line 54 were NOT updated to 18 as claimed in the problem statement. Reproduced: after clicking sandbox-token-btn, input='WDL-DEMO-2026-LOVE' (len=18) but redeem-token-button.disabled === true.",
+        "selector": "[data-testid=redeem-token-button]",
+        "priority": "CRITICAL"
+      },
+      {
+        "component": "Activate.jsx formatToken()",
+        "issue": "Manual character-by-character typing of 'WDL-DEMO-2026-LOVE' yields 'WDL-WDLD-EMO2-026L'. Because the controlled input value already carries the 'WDL-' prefix, each keystroke re-runs formatToken on the concatenation (existing 'WDL-…' + new char). The `clean.startsWith('WDL') ? slice(3) : clean` branch only strips ONE occurrence, so the user-typed 'W','D','L' get preserved as content, corrupting the token. Fix: strip ALL leading 'WDL' occurrences, or use a controlled-input approach that only formats the digits/letters portion.",
+        "selector": "[data-testid=token-input]",
+        "priority": "HIGH"
+      }
+    ],
+    "integration_issues": [
+      {
+        "flow": "Activation redeem",
+        "issue": "Because the button never enables with the sandbox token, POST /api/wedding/activate is never fired from the sandbox-token path. Backend endpoint itself is confirmed green in iteration_2 — this is purely a frontend gating bug.",
+        "affected_selectors": ["[data-testid=redeem-token-button]", "[data-testid=sandbox-token-btn]"]
+      }
+    ],
+    "design_issues": []
+  },
+  "test_report_links": ["/app/test_reports/iteration_3.json"],
+  "action_items": [
+    "In /app/frontend/src/pages/Activate.jsx line 59: change `value.length < 19` to `value.length < 18`.",
+    "In /app/frontend/src/pages/Activate.jsx line 54: change `maxLength={19}` to `maxLength={18}`.",
+    "Fix formatToken() so that manually typing 'WDL-DEMO-2026-LOVE' produces exactly that string, not 'WDL-WDLD-EMO2-026L'. Suggestion: `const clean = (v||'').replace(/[^A-Z0-9]/gi,'').toUpperCase().replace(/^WDL/, ''); const parts=[clean.slice(0,4),clean.slice(4,8),clean.slice(8,12)].filter(Boolean); return 'WDL-'+parts.join('-');` — this strips only ONE leading WDL from the cleaned stream (which is what we want since user keeps typing new chars after 'WDL-'). Actually the current code already does this on paste; the problem is when the incoming value already contains 'WDL-XXXX' state + user types a new char, the clean stream contains 'WDL' + prior chars + new char, and slice(3) only removes the first 'WDL'. If the user typed W,D,L manually after 'WDL-', they'd get 'WDLWDL…'. The safer fix is to only accept trailing chars beyond the fixed 'WDL-' prefix in the onChange.",
+    "After fix, re-run the same Playwright test to confirm (a) sandbox click enables the button, (b) clicking Redeem POSTs to /api/wedding/activate and navigates to /setup or /dashboard, (c) manual typing of 'WDL-DEMO-2026-LOVE' produces the correct 18-char string and enables the button."
+  ],
+  "critical_code_review_comments": [
+    "The problem statement claimed the fix was applied but the source file was not modified — indicates a gap between agent action and file write. Main agent should verify file diffs after making edits.",
+    "The 'setup_complete' navigation branch: `if (data?.wedding?.setup_complete) navigate('/dashboard'); else navigate('/setup')` — on a first activation this will always be false so user lands on /setup, which is correct. No issue.",
+    "formatToken() has an implicit assumption that the input stream never re-contains 'WDL' after the prefix. This is fragile — recommend refactoring to a masked-input approach or restricting the editable portion to characters after position 4."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "not tested (backend already green in iter2)", "frontend": "0% (primary bug reproduced, fix not applied)"},
+  "test_credentials": "Seeded MongoDB session in test_database: user_id=user_activate_test_1787125633473, session_token=test_session_activate_1787125633473. Cookie set on couple-together-3.preview.emergentagent.com, path=/, secure, sameSite=None, httpOnly.",
+  "seed_data_creation": "1 test user + 1 user_session inserted into test_database. No wedding/token consumed (button never enabled, so /api/wedding/activate never called).",
+  "retest_needed": true,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "After main agent applies the two-char fix (19→18) AND the formatToken paste/type fix, re-run: (1) seed session via /app/auth_testing.md mongosh, (2) navigate to /activate with cookie, (3) click [data-testid=sandbox-token-btn], (4) assert redeem button enabled, (5) click redeem, (6) assert URL becomes /setup. Also test manual typing case. If sandbox token was consumed, generate a fresh one via POST /api/admin/tokens/generate with header x-admin-key: weddly-admin-2026-secure.",
+  "rca of the issue": "The sandbox demo token WDL-DEMO-2026-LOVE contains exactly 18 characters (3 + 1 + 4 + 1 + 4 + 1 + 4). The Activate.jsx button uses `disabled={loading || value.length < 19}` requiring 19+ characters, which is unreachable for this token. The problem statement asserted the constant was updated from 19 to 18, but the source file at /app/frontend/src/pages/Activate.jsx lines 54 and 59 still reads 19 — the edit was never persisted. Reproduction: seed session cookie, navigate /activate, click sandbox button, observe input value length=18 and button.disabled=true. Mitigation: change both constants to 18. Secondary RCA: formatToken() double-prepends 'WDL-' during incremental typing because clean.startsWith('WDL') only strips one occurrence while the controlled input keeps re-feeding 'WDL-' + user's raw keystrokes back through the formatter."
+}

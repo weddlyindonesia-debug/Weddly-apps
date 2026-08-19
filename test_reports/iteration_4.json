@@ -1,0 +1,32 @@
+{
+  "summary": "Retest of /activate page. Bug (1) length gate 19→18 IS FIXED — sandbox click yields 18-char token and Redeem button becomes ENABLED; clicking Redeem fires POST /api/wedding/activate and navigates to /setup (verified with a freshly-generated admin token, status 200). Bug (2) formatToken() while-loop-strip of WDL prefix is NOT FIXED — /app/frontend/src/pages/Activate.jsx line 13 still contains a SINGLE strip `const b = clean.startsWith('WDL') ? clean.slice(3) : clean;`. Character-by-character typing of 'WDL-DEMO-2026-LOVE' still produces the corrupted value 'WDL-WDLD-EMO2-026L'. Paste (single change event via fill or ClipboardEvent) works correctly and yields 'WDL-DEMO-2026-LOVE'.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "Activate.jsx formatToken()",
+        "issue": "Manual character-by-character typing of 'WDL-DEMO-2026-LOVE' yields 'WDL-WDLD-EMO2-026L'. The single-strip `startsWith('WDL') ? slice(3) : clean` on line 13 was NOT converted to a while-loop as the problem statement claimed. When the controlled value already contains 'WDL-' and the user types W then D then L, the cleaned buffer becomes 'WDLWDL' and slice(3) leaves the second 'WDL' intact, corrupting the token. Paste works because the incoming value replaces the buffer entirely.",
+        "selector": "[data-testid=token-input]",
+        "priority": "HIGH"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": ["/app/test_reports/iteration_4.json"],
+  "action_items": [
+    "In /app/frontend/src/pages/Activate.jsx line 13, replace the single-strip with a while-loop OR mask-input approach. Suggested minimal fix: `let b = clean; while (b.startsWith('WDL')) b = b.slice(3);` — this handles the double-WDL case created by controlled-input re-feed. Note: this will swallow a user's intentionally-typed 'WDL' after the prefix, but for the specified sandbox token 'WDL-DEMO-2026-LOVE' (where user content is DEMO2026LOVE) this produces the correct output. A more robust fix is to only format the substring AFTER position 4 (past the fixed 'WDL-' prefix)."
+  ],
+  "critical_code_review_comments": [
+    "Main agent's problem-statement claim that formatToken() was updated to loop-strip is INCORRECT — the file was not modified. Line 13 still shows single-strip. Length-gate fix WAS persisted (lines 54 & 59 both = 18).",
+    "Controlled-input + prefix-mask pattern in formatToken is fragile. Recommend masked-input library or splitting state into fixed-prefix + editable-suffix."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "not tested (frontend only)", "frontend": "3/4 assertions passed (sandbox click + redeem POST + paste; manual typing still fails)"},
+  "test_credentials": "Seeded MongoDB test_database: user_id=user_activate_retest_1787125829918, session_token=test_session_activate_retest_1787125829918. Cookie set on couple-together-3.preview.emergentagent.com (secure, sameSite=None, httpOnly).",
+  "seed_data_creation": "1 test user + 1 user_session inserted. 1 fresh admin token generated & CONSUMED during redeem test: WDL-D58Q-J3AN-RERG → wedding_id=wed_964bc81ccb47 bound to user_activate_retest_1787125829918. Sandbox WDL-DEMO-2026-LOVE is now saturated (returns 409 'already connected to two accounts').",
+  "retest_needed": true,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Only manual-typing case remains broken. After main agent applies the while-loop or masked-input fix on line 13, re-run just TEST2 (Playwright type chars one-by-one) to confirm value == 'WDL-DEMO-2026-LOVE'. Sandbox token is fully consumed — use POST /api/admin/tokens/generate (x-admin-key: weddly-admin-2026-secure) for any live redeem tests.",
+  "rca of the issue": "formatToken(v) reads the ENTIRE controlled input value on every keystroke. When state='WDL-' and user presses 'W', React calls onChange with 'WDL-W'. formatToken cleans to 'WDLW', sees the WDL prefix and slices once → 'W', producing 'WDL-W'. That's fine. But at the third char, state='WDL-WD' and user presses 'L': input='WDL-WDL', cleaned='WDLWDL', single slice(3)='WDL', joined result='WDL-WDL'. Now the user's 'WDL' becomes real content. Subsequent typed chars are appended AFTER this ghost 'WDL', producing 'WDL-WDLD-EMO2-026L' for the target 'WDL-DEMO-2026-LOVE'. Fix: while-strip in formatToken OR restrict editing to characters after the fixed 4-char 'WDL-' mask."
+}

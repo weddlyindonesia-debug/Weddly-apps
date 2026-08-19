@@ -1,0 +1,23 @@
+{
+  "summary": "Test 4 (paste hyphenated token WDL-DEMO-2026-LOVE into /activate) retest. Verified via real ClipboardEvent + DataTransfer dispatched on the underlying input inside [data-testid=token-input]. Preview updated to 'WDL-DEMO-2026-LOVE' and [data-testid=redeem-token-button] became enabled. PASSED.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "notes_on_review_request_mismatch": "Review request said fix uses `pasteTransformer` prop + `pattern=^[A-Za-z0-9]+$` on line ~68 of Activate.jsx. Actual shipped code uses an `onPaste` handler on the <InputOTP> wrapper (lines 68-74) that calls e.preventDefault() and setBody(extractBody(raw)). No `pasteTransformer` or `pattern` prop is present. Functionally correct for paste, so Test 4 still PASSES. Main agent should reconcile description vs. implementation if pasteTransformer was the intended approach.",
+  "additional_observation": "While validating, tried keyboard typing 'WDL-DEMO-2026-LOVE' char-by-char (not part of Test 4 scope) — resulted in 'WDL-DEMO-2026-LOVW' (final 'E' dropped and replaced by trailing 'W'). Likely per-keystroke extractBody interaction with input-otp's pattern filter mangles hyphen keystrokes / overflow. Non-blocking for Test 4 but may want to investigate for the typing flow separately.",
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Activate.jsx description in review request mentions pasteTransformer + pattern props but neither exists in the file. Implementation uses an onPaste handler instead. Update the internal description/comment to match reality, or switch to the input-otp official pasteTransformer API as originally intended."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "n/a", "frontend": "100% (Test 4 only)"},
+  "test_credentials": "Seeded via mongosh test_database: session_token=test_session_1787126601490 (email test.paste.<ts>@example.com).",
+  "seed_data_creation": "Inserted one users + user_sessions doc in test_database for session cookie access to /activate.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Paste flow works via onPaste handler on <InputOTP>. To simulate paste in Playwright, dispatch ClipboardEvent('paste') with DataTransfer on the underlying <input> inside [data-testid=token-input] (querySelector('[data-testid=token-input] input') works when the testid is on the input itself, which it is here). Focus the input first via clicking [data-testid=token-input]."
+}

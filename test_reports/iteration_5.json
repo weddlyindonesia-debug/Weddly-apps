@@ -1,0 +1,32 @@
+{
+  "summary": "BLOCKER: The InputOTP refactor described in the review_request was NOT applied to /app/frontend/src/pages/Activate.jsx. The file on disk is still the pre-refactor version from iteration_4: it uses shadcn <Input> (single text field) with maxLength={18}, the same formatToken() single-strip-WDL bug on line ~15 (now guarded by `while (body.startsWith('WDL') && body.length > 12)` — but that guard NEVER fires during interactive typing because body.length only reaches 12 after full input, so the original manual-typing corruption is still present in effect), and there is NO [data-testid=token-preview] element in the DOM (verified via live browser: preview count = 0). All 4 requested tests target the OTP-based UI (token-preview element, 3 OTP groups, body-only state) which does not exist. Only Test 1 partial-verify was possible: sandbox button DOES set input value to 'WDL-DEMO-2026-LOVE' and redeem button IS enabled — but this is the OLD flow, not the OTP flow described in the request.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "Activate.jsx",
+        "issue": "File was NOT refactored to use InputOTP as claimed by review_request. Still renders a single shadcn <Input maxLength=18> with formatToken() controlled-input. Missing entirely: InputOTP component usage, [data-testid=token-preview] element, extractBody() helper, 3x4 OTP slot groups, fixed 'WDL-' label. The `while` loop added to formatToken (line 15) has a length>12 guard that prevents it from firing during progressive typing, so the manual-typing corruption from iteration_4 remains reachable in practice.",
+        "selector": "[data-testid=token-input]",
+        "priority": "CRITICAL"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": ["/app/test_reports/iteration_5.json"],
+  "action_items": [
+    "Actually apply the refactor: import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp'; replace the single <Input> with three InputOTPGroups of 4 slots each, maxLength={12}. Render a static 'WDL-' text label BEFORE the OTP (not inside the input). Add a `<div data-testid=\"token-preview\">WDL-XXXX-XXXX-XXXX</div>` that reflects the current body. State should be body: string (12 alphanumeric chars max), not the current 'WDL-…' formatted string. Sandbox button must setBody('DEMO2026LOVE'). Redeem should submit token_code = 'WDL-' + body.match(/.{1,4}/g).join('-'). Disabled when body.length < 12. Add extractBody(raw) that strips leading 'WDL' (case-insensitive) and non-alphanumerics from pasted values."
+  ],
+  "critical_code_review_comments": [
+    "The review_request describes code changes that do not exist in the codebase. Either the main agent forgot to save the file, or the wrong branch/workspace is being reported. Please verify Activate.jsx contents before requesting retest.",
+    "The current formatToken while-loop with length>12 guard is dead code during interactive typing — it can never strip the ghost 'WDL' because the buffer length is <12 while the user is still typing. The iteration_4 RCA still applies."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "not tested (frontend only)", "frontend": "0/4 OTP tests possible — target UI does not exist. Legacy sandbox+enable check: PASS."},
+  "test_credentials": "Seeded MongoDB test_database: user_id=user_activate_iter5_1787126115851, session_token=test_session_iter5_1787126115851. Cookie set on couple-together-3.preview.emergentagent.com (secure, sameSite=None, httpOnly).",
+  "seed_data_creation": "1 test user + 1 user_session inserted for iter5. No tokens generated (blocked before redeem test).",
+  "retest_needed": true,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Before running any Playwright script, first `grep -n 'InputOTP\\|token-preview\\|extractBody' /app/frontend/src/pages/Activate.jsx` to confirm the refactor actually landed. If those tokens are missing, stop and report — the file was not saved.",
+  "rca of the issue": "Main agent likely made in-memory edits to Activate.jsx but did not persist them to disk, or committed to a different file/branch. Verified via view_file + live DOM inspection: element structure matches pre-refactor iter4 state exactly. No hot-reload issue — cache-buster ?v=iter5 was used and served content still shows a single <input maxlength=18> with no OTP slots (hasOtpSlots=false)."
+}

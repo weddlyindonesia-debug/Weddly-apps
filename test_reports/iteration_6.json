@@ -1,0 +1,32 @@
+{
+  "summary": "Retested /activate refactor with InputOTP. New DOM is live (token-preview, token-input, redeem-token-button, sandbox-token-btn all present). Tests 1 (sandbox), 2 (redeem -> 200 + navigate to /setup), and 3 (manual typing of 12-char body) PASS. Test 4 (paste 'WDL-DEMO-2026-LOVE' with hyphens) FAILS due to InputOTP `pattern=^[A-Za-z0-9]+$` rejecting hyphenated input before extractBody() can strip the prefix. Typing/inserting without hyphens (e.g. 'WDLDEMO2026LOVE' or 'DEMO2026LOVE') works correctly and extractBody strips the WDL prefix as designed.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "Activate.jsx InputOTP",
+        "issue": "Pasting the full token as displayed to users (e.g. 'WDL-DEMO-2026-LOVE' copied from Lynk email) is silently dropped because InputOTP's `pattern=^[A-Za-z0-9]+$` regex validates the ENTIRE pasted string before calling onChange. Hyphens fail the regex so onChange never fires and extractBody() never gets a chance to strip them. Real users copy the full hyphenated token — this is a real UX bug.",
+        "selector": "[data-testid=token-input]",
+        "priority": "HIGH"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Fix InputOTP paste handling in /app/frontend/src/pages/Activate.jsx: either (a) remove the `pattern` prop and rely solely on extractBody() to sanitize inside onChange, or (b) add an onPaste handler on the OTP input container that intercepts, calls extractBody(clipboardData), and calls setBody() directly (preventDefault on the raw paste). Option (a) is simplest — extractBody already uppercases, strips non-alphanumerics and drops the leading 'WDL'."
+  ],
+  "critical_code_review_comments": [
+    "Activate.jsx line 68: `pattern=^[A-Za-z0-9]+$` on InputOTP is inconsistent with the extractBody() sanitizer on line 12. extractBody exists precisely to handle dashes/prefix, but pattern blocks the input from ever reaching it on paste. Drop the pattern prop.",
+    "Consider showing a visible error/hint when paste is rejected so users aren't confused by a no-op."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "n/a", "frontend": "75% (3/4 tests pass)"},
+  "test_credentials": "Seeded via mongosh: session_token=test_session_1787126261158, user=user_1787126261158. Sandbox demo token WDL-DEMO-2026-LOVE re-seeded to unused; note Test 2 consumed it again (workspace wed_34c39859b455 created).",
+  "seed_data_creation": "Inserted 1 user + 1 user_session in test_database; reset access_tokens WDL-DEMO-2026-LOVE to unused and deleted its wedding_workspaces before run. Post-run: the token is again consumed (activated) by Test 2 — re-seed before next run if needed.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Refactor is confirmed live. Only remaining defect is paste-with-hyphens (Test 4). After main agent fixes InputOTP pattern/paste handling, rerun only Test 4 using ClipboardEvent dispatch on input[data-input-otp=true] with 'WDL-DEMO-2026-LOVE'. Reset the sandbox token before re-running Test 2.",
+  "rca of the issue": "InputOTP (shadcn/input-otp) rejects any incoming value that does not match its `pattern` prop BEFORE invoking onChange. The Activate page uses `pattern=^[A-Za-z0-9]+$` (alphanumeric only). When a user pastes 'WDL-DEMO-2026-LOVE', the hyphens cause the pattern to fail, so onChange never receives the value and the state `body` stays empty. extractBody() (which was written to strip WDL and non-alphanumerics) is bypassed entirely. Fix: remove the pattern prop (extractBody already sanitizes) or intercept onPaste at the container level and setBody(extractBody(pasted)) with preventDefault."
+}
