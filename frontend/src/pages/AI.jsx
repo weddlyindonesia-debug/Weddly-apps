@@ -4,15 +4,25 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Sparkles, Send, User } from "lucide-react";
 import { API_BASE } from "@/lib/api";
+import { useT } from "@/context/LanguageContext";
 
-const STARTERS = [
-  "Bantu susun rundown detail untuk prosesi Akad Nikah dan Resepsi malam (500 tamu).",
-  "Hitung proporsi alokasi budget Rp 300 juta untuk pernikahan di Jakarta.",
-  "Buatkan draf teks sambutan keluarga untuk prosesi Sangjit.",
-  "Ide souvenir pernikahan ramah lingkungan di bawah Rp 25.000 per pcs.",
-];
+const STARTERS = {
+  en: [
+    "Help me draft a detailed rundown for Akad and evening Reception (500 guests).",
+    "Split a Rp 300 million budget for a wedding in Jakarta.",
+    "Draft a family welcome speech for a Sangjit ceremony.",
+    "Eco-friendly wedding souvenir ideas under Rp 25,000 per piece.",
+  ],
+  id: [
+    "Bantu susun rundown detail untuk prosesi Akad Nikah dan Resepsi malam (500 tamu).",
+    "Hitung proporsi alokasi budget Rp 300 juta untuk pernikahan di Jakarta.",
+    "Buatkan draf teks sambutan keluarga untuk prosesi Sangjit.",
+    "Ide souvenir pernikahan ramah lingkungan di bawah Rp 25.000 per pcs.",
+  ],
+};
 
 export default function AIChat() {
+  const { t, lang } = useT();
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [model, setModel] = useState("claude-sonnet-4-6");
@@ -30,7 +40,7 @@ export default function AIChat() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ message: msg, model }),
+        body: JSON.stringify({ message: msg, model, lang }),
       });
       if (!res.ok || !res.body) throw new Error("stream failed");
       const reader = res.body.getReader();
@@ -59,8 +69,8 @@ export default function AIChat() {
     <div className="max-w-4xl mx-auto p-6 md:p-10 flex flex-col h-[calc(100vh-2rem)]">
       <div className="mb-6 flex items-end justify-between flex-wrap gap-4">
         <div>
-          <div className="text-xs uppercase tracking-widest text-muted-foreground">Advisor</div>
-          <h1 className="font-serif text-4xl flex items-center gap-2"><Sparkles className="h-7 w-7 text-primary" /> Weddly AI</h1>
+          <div className="text-xs uppercase tracking-widest text-muted-foreground">{t("ai.section")}</div>
+          <h1 className="font-serif text-4xl flex items-center gap-2"><Sparkles className="h-7 w-7 text-primary" /> {t("ai.title")}</h1>
         </div>
         <div className="inline-flex rounded-full border border-border p-1 bg-card">
           <button data-testid="ai-model-selector-claude" onClick={() => setModel("claude-sonnet-4-6")} className={`px-4 py-1.5 rounded-full text-sm ${model === "claude-sonnet-4-6" ? "bg-primary text-primary-foreground" : ""}`}>Claude Sonnet 4.6</button>
@@ -73,9 +83,9 @@ export default function AIChat() {
           {messages.length === 0 && (
             <div className="text-center text-muted-foreground py-8">
               <Sparkles className="h-8 w-8 mx-auto mb-3 text-primary" />
-              <p className="mb-6">Ask Weddly AI anything about your wedding — budget, rundowns, speeches, vendors.</p>
+              <p className="mb-6">{t("ai.intro")}</p>
               <div className="grid sm:grid-cols-2 gap-2 max-w-2xl mx-auto text-left">
-                {STARTERS.map((s) => (
+                {(STARTERS[lang] || STARTERS.en).map((s) => (
                   <button data-testid="ai-prompt-chip" key={s} onClick={() => send(s)} className="rounded-xl border border-border bg-card p-3 text-sm hover:shadow-md transition-shadow duration-200">{s}</button>
                 ))}
               </div>
@@ -98,7 +108,7 @@ export default function AIChat() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
-            placeholder="Ask Weddly AI…"
+            placeholder={t("ai.placeholder")}
             className="min-h-[48px] max-h-40 resize-none"
           />
           <Button data-testid="ai-send-message-btn" onClick={() => send()} disabled={busy || !input.trim()} className="rounded-full h-12 w-12 p-0"><Send className="h-4 w-4" /></Button>

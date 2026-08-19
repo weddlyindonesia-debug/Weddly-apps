@@ -8,10 +8,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { useT } from "@/context/LanguageContext";
 
 const CATS = ["general","meeting","fitting","payment","rehearsal","setup","ceremony","reception"];
 
 export default function Timeline() {
+  const { t } = useT();
   const [events, setEvents] = useState([]);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ title: "", date: "", start_time: "", end_time: "", location: "", category: "general", notes: "" });
@@ -20,40 +22,40 @@ export default function Timeline() {
   useEffect(() => { load(); }, []);
 
   const add = async () => {
-    if (!form.title.trim() || !form.date) return toast.error("Title and date required");
+    if (!form.title.trim() || !form.date) return toast.error(t("time.required"));
     await api.post("/timeline", form); setOpen(false);
     setForm({ title: "", date: "", start_time: "", end_time: "", location: "", category: "general", notes: "" });
-    load(); toast.success("Event added");
+    load(); toast.success(t("time.added"));
   };
   const remove = async (e) => { await api.delete(`/timeline/${e.event_id}`); load(); };
 
   return (
     <div className="max-w-5xl mx-auto p-6 md:p-10">
       <div className="mb-8 flex items-end justify-between flex-wrap gap-4">
-        <div><div className="text-xs uppercase tracking-widest text-muted-foreground">Schedule</div><h1 className="font-serif text-4xl">Timeline & rundown</h1></div>
+        <div><div className="text-xs uppercase tracking-widest text-muted-foreground">{t("time.section")}</div><h1 className="font-serif text-4xl">{t("time.title")}</h1></div>
         <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild><Button data-testid="rundown-add-row-btn" className="rounded-full"><Plus className="h-4 w-4 mr-1" /> New event</Button></DialogTrigger>
+          <DialogTrigger asChild><Button data-testid="rundown-add-row-btn" className="rounded-full"><Plus className="h-4 w-4 mr-1" /> {t("time.add_btn")}</Button></DialogTrigger>
           <DialogContent>
-            <DialogHeader><DialogTitle>New event</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle>{t("time.new")}</DialogTitle></DialogHeader>
             <div className="space-y-3">
-              <div><Label>Title</Label><Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} data-testid="event-title-input" /></div>
+              <div><Label>{t("time.title_field")}</Label><Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} data-testid="event-title-input" /></div>
               <div className="grid grid-cols-3 gap-3">
-                <div><Label>Date</Label><Input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} /></div>
-                <div><Label>Start</Label><Input type="time" value={form.start_time} onChange={(e) => setForm({ ...form, start_time: e.target.value })} /></div>
-                <div><Label>End</Label><Input type="time" value={form.end_time} onChange={(e) => setForm({ ...form, end_time: e.target.value })} /></div>
+                <div><Label>{t("common.date")}</Label><Input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} /></div>
+                <div><Label>{t("time.start")}</Label><Input type="time" value={form.start_time} onChange={(e) => setForm({ ...form, start_time: e.target.value })} /></div>
+                <div><Label>{t("time.end")}</Label><Input type="time" value={form.end_time} onChange={(e) => setForm({ ...form, end_time: e.target.value })} /></div>
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <div><Label>Location</Label><Input value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} /></div>
-                <div><Label>Category</Label><Select value={form.category} onValueChange={(v) => setForm({ ...form, category: v })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{CATS.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent></Select></div>
+                <div><Label>{t("time.location")}</Label><Input value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} /></div>
+                <div><Label>{t("common.category")}</Label><Select value={form.category} onValueChange={(v) => setForm({ ...form, category: v })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{CATS.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent></Select></div>
               </div>
-              <Button onClick={add} className="w-full rounded-full" data-testid="save-event-btn">Save event</Button>
+              <Button onClick={add} className="w-full rounded-full" data-testid="save-event-btn">{t("time.save")}</Button>
             </div>
           </DialogContent>
         </Dialog>
       </div>
 
       {events.length === 0 ? (
-        <Card className="p-10 text-center text-muted-foreground rounded-2xl">Your rundown starts here. Add your first event.</Card>
+        <Card className="p-10 text-center text-muted-foreground rounded-2xl">{t("time.empty")}</Card>
       ) : (
         <Card className="rounded-2xl overflow-hidden">
           <ul className="divide-y divide-border">

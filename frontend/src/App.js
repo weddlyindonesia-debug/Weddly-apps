@@ -28,6 +28,13 @@ function Protected({ children, requireWedding = true, requireSetup = true }) {
   return children;
 }
 
+function AdminGuard({ children }) {
+  const { isAdmin, loading } = useAuth();
+  if (loading) return null;
+  if (!isAdmin) return <Navigate to="/dashboard" replace />;
+  return children;
+}
+
 function Router() {
   const location = useLocation();
   if (location.hash?.includes("session_id=")) return <AuthCallback />;
@@ -44,7 +51,7 @@ function Router() {
       <Route path="/timeline" element={<Protected><AppShell><Timeline /></AppShell></Protected>} />
       <Route path="/ai" element={<Protected><AppShell><AI /></AppShell></Protected>} />
       <Route path="/settings" element={<Protected><AppShell><Settings /></AppShell></Protected>} />
-      <Route path="/admin" element={<Protected requireSetup={false}><AppShell><Admin /></AppShell></Protected>} />
+      <Route path="/admin" element={<Protected requireSetup={false}><AdminGuard><AppShell><Admin /></AppShell></AdminGuard></Protected>} />
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
   );

@@ -1,0 +1,37 @@
+{
+  "summary": "Iteration 9 — Weddly multi-fix verification. Backend (5/5 pytest passed) validated the removed 'other wedding' restriction on /api/wedding/activate, most-recent membership resolution in /api/auth/me, partner-2 join flow, third-user 409, and /api/ai/chat acceptance of the new `lang` field. Frontend (6/6 flows passed) validated EN/ID toggle on /login (heading -> 'Selamat datang, calon pengantin.', button -> 'Lanjutkan dengan Google', no 'Lynk' mention), /activate title translation ('Aktifkan Workspace Weddly Anda'), vendor card click -> detail modal, edit name + NumberInput price ('50000000' -> '50.000.000', type=text no steppers), save & delete, /budget NumberInput dot-separated thousands with no +/- steppers, /settings Language tab renders LanguageToggle, and /admin table with translated column headers (KODE / STATUS / ANGGOTA / DIBUAT) + Buat token creates new row (32 -> 33).",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      { "screen": "/vendors detail modal", "issues": ["Console warning: DialogContent missing `Description` or `aria-describedby` — a11y warning only, non-blocking."] },
+      { "screen": "/admin as non-admin user", "issues": ["Two GET requests return 403 (admin/tokens, admin/analytics probably) and surface a React uncaught runtime error overlay because the page mounts admin queries without gating on is_admin. Non-admin users landing on /admin see red error overlay. Should route-guard or catch 403s and show a friendly 'Not authorized' state."] }
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter9.py",
+    "/app/test_reports/pytest/iter9.xml"
+  ],
+  "action_items": [
+    "(Optional) Guard /admin page against non-admin users to avoid the uncaught 403 axios error overlay.",
+    "(Optional) Add DialogDescription (or aria-describedby) to vendor detail and new-expense dialogs to silence a11y warnings.",
+    "(Nit) /activate.subtitle in translations.js still contains 'Lynk' ('Enter the access token from your Lynk purchase.' / 'Masukkan token akses dari pembelian Lynk Anda.') — request was to remove Lynk from login intro (done); confirm whether /activate should also be scrubbed."
+  ],
+  "critical_code_review_comments": [
+    "server.py is 1000+ lines; consider splitting into routers/{auth,wedding,tasks,budget,guests,vendors,timeline,ai,admin}.py per file-size guideline (>700 lines).",
+    "NumberInput correctly parses non-digits and formats via `\\B(?=(\\d{3})+(?!\\d))/g,'.'`; behaves as advertised.",
+    "activate_token idempotency + atomic claim look correct; get_active_membership now correctly sorts by joined_at DESC, resolving the admin-multi-wedding bug.",
+    "AI chat: `lang` hint is appended to the system prompt only; system prompt already instructs bilingual behavior, so effectively lang acts as a nudge. Streaming works."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter9.py (new)"
+  ],
+  "success_rate": { "backend": "100% (5/5)", "frontend": "100% (6/6 tested flows)" },
+  "test_credentials": "mongosh-seeded sessions in test_database. Non-admin FE session: fe_sess_1787130159264 (user fe.1787130159264@example.com, member of wedding wed_9b0d3e66be7b via token WDL-CHLY-3YZ8-XK6W). Admin FE session: admin_fe_sess_1787130277966 (weddlyindonesia@gmail.com). Admin API x-admin-key: weddly-admin-2026-secure.",
+  "seed_data_creation": "Inserted users + user_sessions rows in test_database; activated one fresh admin token to give the seeded admin a NEW wedding membership; created one vendor + patched wedding setup_complete=true.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Backend and all core UI fixes for iter9 are verified. Only cosmetic follow-ups: (1) non-admin visiting /admin sees a 403-triggered React error overlay; the page should be route-guarded on is_admin. (2) DialogDescription a11y warnings on vendor detail + new-expense dialogs. (3) /activate.subtitle still references 'Lynk purchase' if that also needs scrubbing.",
+  "rca of the issue": "Original 409 on admin re-activation was caused by activate_token rejecting users who already had any active membership. Fix removed that pre-check; combined with get_active_membership now returning the most-recently-joined membership, /api/auth/me correctly reports the newest wedding after admin activates a fresh token."
+}

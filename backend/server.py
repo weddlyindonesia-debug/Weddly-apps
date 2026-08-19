@@ -98,9 +98,12 @@ async def require_admin(user: Dict[str, Any] = Depends(get_current_user), x_admi
 
 
 async def get_active_membership(user: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-    return await db.wedding_members.find_one(
+    # Users may have multiple memberships; return most-recently joined active one.
+    cur = db.wedding_members.find(
         {"user_id": user["user_id"], "status": "active"}, {"_id": 0}
-    )
+    ).sort("joined_at", -1).limit(1)
+    rows = await cur.to_list(1)
+    return rows[0] if rows else None
 
 
 async def require_wedding(user: Dict[str, Any] = Depends(get_current_user)) -> Dict[str, Any]:
@@ -263,6 +266,7 @@ class EventUpdate(BaseModel):
 class AIChatIn(BaseModel):
     message: str
     model: Optional[str] = "claude-sonnet-4-6"  # or gemini-3-flash
+    lang: Optional[str] = "en"
 
 
 class ThemeUpdate(BaseModel):
@@ -409,10 +413,8 @@ async def activate_token(payload: TokenActivate, user: Dict[str, Any] = Depends(
             wed = await db.wedding_workspaces.find_one({"wedding_id": token["wedding_id"]}, {"_id": 0})
             return {"wedding": wed, "membership": existing_member, "reused": True}
 
-    # Also: ensure user not already in another wedding (business rule: one active wedding per user)
-    other = await db.wedding_members.find_one({"user_id": user["user_id"], "status": "active"}, {"_id": 0})
-    if other and other.get("wedding_id") != token.get("wedding_id"):
-        raise HTTPException(status_code=409, detail="You already belong to another wedding workspace.")
+    # NOTE: A user may belong to multiple wedding workspaces (e.g. admin testing multiple tokens).
+    # `get_active_membership` returns the most recently joined one.
 
     # Concurrency guard: atomic increment on current_member_count, but only if under limit
     # Use findOneAndUpdate with conditional filter
@@ -962,6 +964,9 @@ Wedding context:
         provider, model_name = "gemini", "gemini-3-flash-preview"
     else:
         provider, model_name = "anthropic", "claude-sonnet-4-6"
+
+    lang_hint = "Bahasa Indonesia" if (payload.lang or "").lower().startswith("id") else "English"
+    context += f"\nAlways respond in {lang_hint} unless the user writes in another language."
 
     chat = LlmChat(
         api_key=EMERGENT_LLM_KEY,
