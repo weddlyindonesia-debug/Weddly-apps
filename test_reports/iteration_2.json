@@ -1,0 +1,23 @@
+{
+  "summary": "Iteration_2 retest of Weddly backend focused on 3 areas flagged in iteration_1: (1) POST /api/wedding/activate serialization for partner1 & partner2 branches, (2) 3rd-user 409, (3) AI streaming chat, (4) cross-tenant PATCH/DELETE guards for checklist/budget/guests/vendors/timeline. All 9 targeted tests PASSED against the external REACT_APP_BACKEND_URL. The ObjectId serialization bug is fully resolved — both fresh-claim and partner2 join branches now return 200 with clean JSON (no leaked `_id`). AI /api/ai/chat streams a non-empty text/plain response when the caller has an active wedding workspace. Cross-tenant PATCH/DELETE for user B against user A's task/item/guest/vendor/event correctly return 404 'not found'.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_retest_iter2.py",
+    "/app/test_reports/pytest/iter2_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "server.py is 1031 lines — approaching threshold; consider splitting into routers (auth, wedding, checklist, budget, guests, vendors, timeline, ai, admin) for maintainability.",
+    "AI chat endpoint requires an active wedding workspace (returns 403 otherwise). This is intentional multi-tenant scoping but should be documented; frontend must guard the AI panel until activation.",
+    "Response envelopes are inconsistent across CRUD endpoints — activation returns flat {wedding, membership}, whereas checklist/budget/guests/vendors/timeline POST responses wrap the resource under a typed key ({task:{}}, {item:{}}, {guest:{}}, {vendor:{}}, {event:{}}). Consider standardising to reduce client branching."
+  ],
+  "updated_files": ["/app/backend/tests/test_retest_iter2.py"],
+  "success_rate": {"backend": "100% (9/9 targeted retests)", "frontend": "not tested"},
+  "test_credentials": "Sessions inserted directly into MongoDB (test_database.user_sessions). Admin token generation uses ADMIN_API_KEY=weddly-admin-2026-secure via header x-admin-key. Admin email weddlyindonesia@gmail.com.",
+  "seed_data_creation": "Multiple TEST_-prefixed users, fresh WDL tokens (via /api/admin/tokens/generate), and one wedding workspace per user_a/user_b fixture. No cleanup performed (safe — all TEST_-prefixed).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "iter2 confirmed the ObjectId fix at server.py:477 and 505. Full 9-test suite is in /app/backend/tests/test_retest_iter2.py and can be reused as a regression. Iteration_1 already covered 33 other checks (CRUD, admin, dashboard, theme, checklist seed) — those remain green.",
+  "rca of the issue": "iteration_1 RCA: `member_doc` was inserted via motor's insert_one which mutates the dict in-place adding a bson ObjectId under `_id`; the endpoint returned that dict directly, causing FastAPI's jsonable_encoder to raise. Fix applied in server.py: `member_doc.pop('_id', None)` after each insert_one in both partner1 fresh-claim (line 477) and partner2 join (line 505) branches. Verified: JSON responses no longer contain `_id`."
+}

@@ -1,0 +1,47 @@
+{
+  "summary": "Weddly backend smoke-tested via external REACT_APP_BACKEND_URL using MongoDB-seeded Bearer sessions. 33/36 checks passed. Critical bug: /api/wedding/activate returns 500 on successful partner1 & partner2 activation paths — data is persisted but response serialization fails because the inserted `member_doc` retains a MongoDB `_id` (ObjectId) which is not JSON-serializable. Idempotency call succeeds because it uses find_one({}, {'_id':0}). This blocks the happy path from the frontend even though DB state is correct.",
+  "tested_scope": ["backend", "auth", "integration"],
+  "passed": [
+    "GET /api/auth/me returns 401 without session and 200 with Bearer",
+    "POST /api/admin/tokens/generate via admin user creates WDL-XXXX-XXXX-XXXX (regex validated), non-admin blocked 403",
+    "GET /api/admin/tokens lists seeded WDL-DEMO-2026-LOVE",
+    "Token activation: invalid format -> 400, unknown code -> 404, token normalization (lowercase input) accepted",
+    "Idempotency: same user re-activating returns reused=true with same wedding_id (200)",
+    "Third-user activation returns 409 with friendly message",
+    "PATCH /api/wedding partial saves; setup_complete seeds 20 checklist tasks; re-calling is idempotent (no duplicates)",
+    "GET /api/dashboard returns progress, days_to_go, this_week, budget, guests, vendors, upcoming",
+    "Checklist CRUD (create, PATCH toggle, delete)",
+    "Budget CRUD, negative amounts rejected 400, totals correct",
+    "Guests CRUD, counts correct after RSVP update",
+    "Vendors CRUD, Timeline CRUD",
+    "PATCH /api/wedding/theme persists theme_id",
+    "User without wedding gets 403 on /checklist (multi-tenancy guard)"
+  ],
+  "failed": [
+    {
+      "area": "POST /api/wedding/activate (partner1 fresh claim)",
+      "issue": "Returns 500 Internal Server Error although the wedding + membership are created in MongoDB. Backend log: ValueError: [TypeError(\"'ObjectId' object is not iterable\"), TypeError('vars() argument must have __dict__ attribute')]. Root cause: server.py inserts `member_doc` via insert_one which mutates the dict adding `_id: ObjectId(...)`. `wed_doc.pop('_id', None)` is called but `member_doc` is returned still containing the ObjectId, so FastAPI JSON encoding fails.",
+      "evidence": "curl POST /api/wedding/activate with WDL-DEMO-2026-LOVE as user A -> 500. Next call as same user returns 200 with reused=true proving DB write succeeded.",
+      "priority": "HIGH"
+    },
+    {
+      "area": "POST /api/wedding/activate (partner2 join)",
+      "issue": "Same ObjectId serialization crash: 500 returned even though partner 2 membership row is created (third-user attempt correctly gets 409, confirming member_count reached 2).",
+      "evidence": "User B activation -> 500; subsequent user C attempt -> 409 'already connected to two accounts'.",
+      "priority": "HIGH"
+    },
+    {
+      "area": "AI chat / Multi-tenancy cross-user PATCH",
+      "issue": "These two checks could not be executed because the partner1 500 aborted the downstream test flow (no valid session had access to a wedding via a *successful* activation response). Backend logic itself likely works — the underlying membership was created — but retest is required after the activation serializer fix.",
+      "evidence": "Test script aborted before AI + cross-tenant patch/delete assertions ran.",
+      "priority": "MEDIUM"
+    }
+  ],
+  "action_items": [
+    "Fix /api/wedding/activate: pop `_id` from `member_doc` (and re-fetch or exclude _id) in both the partner1 fresh-claim branch and the partner2 join branch before returning. E.g., `member_doc.pop('_id', None)` after each `insert_one`, or refetch via `find_one({...}, {'_id':0})`.",
+    "After fix, re-run activation + AI /api/ai/chat streaming + cross-tenant PATCH/DELETE checks."
+  ],
+  "success_rate": {"backend": "92%", "frontend": "not tested"},
+  "retest_needed": true,
+  "full_testing_deferred": true
+}

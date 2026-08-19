@@ -1,0 +1,641 @@
+{
+  "product_identity": {
+    "name": "Weddly",
+    "tagline": "Two Hearts, One Seamless Wedding Workspace",
+    "description": "A high-end, romantic-yet-modern wedding planning SaaS platform designed for couples. Combines Indonesian wedding traditions (Akad Nikah, Resepsi, Sangjit, Tea Pai, Pemberkatan) with modern productivity, dual-partner collaboration, IDR currency financial control, 8 dynamic visual themes, and Weddly AI advisor.",
+    "emotional_archetype": "Organic Warmth meets Modern Luxury — gentle blush stone, warm ivory, polished typography, and calm structural precision. Avoids tacky pink glitter or generic clipart.",
+    "default_theme": "ivory_champagne",
+    "currency_system": {
+      "code": "IDR",
+      "symbol": "Rp",
+      "locale": "id-ID",
+      "example_format": "Rp 150.000.000",
+      "input_helper": "Auto-formatting thousands separators with clean number parsing"
+    }
+  },
+  "typography": {
+    "font_family_headings": "'Fraunces', 'Cormorant Garamond', 'Playfair Display', serif",
+    "font_family_body": "'Plus Jakarta Sans', 'Manrope', -apple-system, sans-serif",
+    "font_family_mono": "'JetBrains Mono', monospace",
+    "font_pairing_strategy": "Editorial Romantic Serif for headings and milestones paired with highly legible Geometric/Humanist Sans (Plus Jakarta Sans, with native Indonesian/Global aesthetic harmony) for dense data, budgets, and forms.",
+    "google_fonts_import_url": "https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,400&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap",
+    "scale": {
+      "hero_title": "text-4xl sm:text-5xl lg:text-6xl font-serif font-bold tracking-tight leading-tight",
+      "section_title": "text-2xl sm:text-3xl lg:text-4xl font-serif font-semibold tracking-tight text-foreground",
+      "card_title": "text-xl sm:text-2xl font-serif font-semibold text-foreground",
+      "widget_title": "text-lg font-sans font-semibold tracking-tight text-foreground",
+      "body_lead": "text-base sm:text-lg font-sans font-normal text-muted-foreground leading-relaxed",
+      "body_regular": "text-sm sm:text-base font-sans font-normal text-foreground leading-normal",
+      "body_subtle": "text-xs sm:text-sm font-sans text-muted-foreground",
+      "badge_label": "text-xs font-sans font-medium uppercase tracking-[0.12em]"
+    }
+  },
+  "theme_palettes": {
+    "ivory_champagne": {
+      "id": "ivory_champagne",
+      "name": "Ivory & Champagne",
+      "description": "Timeless, warm golden glow, serene bridal silk and warm architectural cream.",
+      "is_default": true,
+      "preview_swatches": ["#FBF9F5", "#C8A97E", "#2B2620", "#EDE5D8"],
+      "css_vars": {
+        "--background": "40 33% 98%",
+        "--foreground": "30 15% 15%",
+        "--card": "40 30% 99%",
+        "--card-foreground": "30 15% 15%",
+        "--popover": "40 30% 99%",
+        "--popover-foreground": "30 15% 15%",
+        "--primary": "36 42% 48%",
+        "--primary-foreground": "40 33% 98%",
+        "--secondary": "38 28% 92%",
+        "--secondary-foreground": "30 15% 18%",
+        "--muted": "38 20% 93%",
+        "--muted-foreground": "30 10% 45%",
+        "--accent": "36 50% 88%",
+        "--accent-foreground": "30 18% 18%",
+        "--destructive": "0 72% 51%",
+        "--destructive-foreground": "0 0% 100%",
+        "--border": "38 20% 87%",
+        "--input": "38 20% 87%",
+        "--ring": "36 42% 48%",
+        "--chart-1": "36 42% 48%",
+        "--chart-2": "28 35% 62%",
+        "--chart-3": "42 45% 72%",
+        "--chart-4": "180 15% 50%",
+        "--chart-5": "30 20% 30%"
+      }
+    },
+    "blush_romance": {
+      "id": "blush_romance",
+      "name": "Blush Romance",
+      "description": "Gentle floral rose, dusty peony, soft quartz, and warm velvet taupe.",
+      "preview_swatches": ["#FDF8F7", "#D48B91", "#332225", "#F2DCDD"],
+      "css_vars": {
+        "--background": "12 40% 98%",
+        "--foreground": "345 20% 17%",
+        "--card": "0 0% 100%",
+        "--card-foreground": "345 20% 17%",
+        "--popover": "0 0% 100%",
+        "--popover-foreground": "345 20% 17%",
+        "--primary": "353 45% 54%",
+        "--primary-foreground": "0 0% 100%",
+        "--secondary": "350 35% 93%",
+        "--secondary-foreground": "345 25% 20%",
+        "--muted": "350 25% 94%",
+        "--muted-foreground": "345 12% 48%",
+        "--accent": "353 50% 90%",
+        "--accent-foreground": "345 28% 22%",
+        "--destructive": "0 72% 51%",
+        "--destructive-foreground": "0 0% 100%",
+        "--border": "350 20% 88%",
+        "--input": "350 20% 88%",
+        "--ring": "353 45% 54%",
+        "--chart-1": "353 45% 54%",
+        "--chart-2": "340 35% 68%",
+        "--chart-3": "15 45% 75%",
+        "--chart-4": "300 20% 55%",
+        "--chart-5": "345 20% 35%"
+      }
+    },
+    "sage_garden": {
+      "id": "sage_garden",
+      "name": "Sage Garden",
+      "description": "Botanical olive foliage, eucalyptus mist, crisp linen, and earthy calm.",
+      "preview_swatches": ["#F7FAF7", "#5B7F61", "#1B2A1E", "#DDE8DE"],
+      "css_vars": {
+        "--background": "120 20% 98%",
+        "--foreground": "130 22% 14%",
+        "--card": "120 15% 99%",
+        "--card-foreground": "130 22% 14%",
+        "--popover": "120 15% 99%",
+        "--popover-foreground": "130 22% 14%",
+        "--primary": "131 22% 38%",
+        "--primary-foreground": "120 20% 98%",
+        "--secondary": "125 18% 91%",
+        "--secondary-foreground": "130 25% 18%",
+        "--muted": "125 15% 92%",
+        "--muted-foreground": "130 10% 44%",
+        "--accent": "128 25% 86%",
+        "--accent-foreground": "130 25% 18%",
+        "--destructive": "0 72% 51%",
+        "--destructive-foreground": "0 0% 100%",
+        "--border": "125 14% 86%",
+        "--input": "125 14% 86%",
+        "--ring": "131 22% 38%",
+        "--chart-1": "131 22% 38%",
+        "--chart-2": "90 20% 52%",
+        "--chart-3": "145 25% 65%",
+        "--chart-4": "45 35% 55%",
+        "--chart-5": "130 20% 25%"
+      }
+    },
+    "midnight_elegant": {
+      "id": "midnight_elegant",
+      "name": "Midnight Elegant",
+      "description": "Cinematic evening gala, deep obsidian navy, starry champagne gold accents.",
+      "preview_swatches": ["#0F141C", "#E2C392", "#F4F6F8", "#1E2633"],
+      "css_vars": {
+        "--background": "218 30% 8%",
+        "--foreground": "210 25% 95%",
+        "--card": "220 26% 12%",
+        "--card-foreground": "210 25% 95%",
+        "--popover": "220 26% 12%",
+        "--popover-foreground": "210 25% 95%",
+        "--primary": "38 65% 65%",
+        "--primary-foreground": "220 30% 8%",
+        "--secondary": "220 22% 18%",
+        "--secondary-foreground": "210 25% 95%",
+        "--muted": "220 20% 16%",
+        "--muted-foreground": "215 15% 65%",
+        "--accent": "38 45% 24%",
+        "--accent-foreground": "38 65% 75%",
+        "--destructive": "0 62% 45%",
+        "--destructive-foreground": "0 0% 100%",
+        "--border": "220 20% 20%",
+        "--input": "220 20% 20%",
+        "--ring": "38 65% 65%",
+        "--chart-1": "38 65% 65%",
+        "--chart-2": "210 50% 60%",
+        "--chart-3": "280 40% 65%",
+        "--chart-4": "160 45% 50%",
+        "--chart-5": "38 40% 45%"
+      }
+    },
+    "dusty_blue": {
+      "id": "dusty_blue",
+      "name": "Dusty Blue",
+      "description": "Airy hydrangeas, French coastal skies, slate silver, and soft serenity.",
+      "preview_swatches": ["#F6F8FA", "#557B97", "#1D2833", "#DBE4EC"],
+      "css_vars": {
+        "--background": "210 30% 98%",
+        "--foreground": "215 30% 16%",
+        "--card": "210 25% 99%",
+        "--card-foreground": "215 30% 16%",
+        "--popover": "210 25% 99%",
+        "--popover-foreground": "215 30% 16%",
+        "--primary": "205 32% 44%",
+        "--primary-foreground": "210 30% 98%",
+        "--secondary": "208 25% 91%",
+        "--secondary-foreground": "215 30% 18%",
+        "--muted": "208 20% 92%",
+        "--muted-foreground": "215 15% 46%",
+        "--accent": "205 35% 86%",
+        "--accent-foreground": "215 35% 20%",
+        "--destructive": "0 72% 51%",
+        "--destructive-foreground": "0 0% 100%",
+        "--border": "208 18% 86%",
+        "--input": "208 18% 86%",
+        "--ring": "205 32% 44%",
+        "--chart-1": "205 32% 44%",
+        "--chart-2": "190 35% 58%",
+        "--chart-3": "225 30% 68%",
+        "--chart-4": "38 35% 60%",
+        "--chart-5": "215 25% 30%"
+      }
+    },
+    "burgundy_love": {
+      "id": "burgundy_love",
+      "name": "Burgundy Love",
+      "description": "Rich velvet wine, deep maroon passion, antique gold, and intimate royal romance.",
+      "preview_swatches": ["#FAF6F6", "#7A2032", "#2B1016", "#E8D0D5"],
+      "css_vars": {
+        "--background": "350 25% 98%",
+        "--foreground": "348 45% 12%",
+        "--card": "350 20% 99%",
+        "--card-foreground": "348 45% 12%",
+        "--popover": "350 20% 99%",
+        "--popover-foreground": "348 45% 12%",
+        "--primary": "348 58% 30%",
+        "--primary-foreground": "0 0% 100%",
+        "--secondary": "348 25% 91%",
+        "--secondary-foreground": "348 50% 16%",
+        "--muted": "348 18% 92%",
+        "--muted-foreground": "348 15% 44%",
+        "--accent": "38 45% 84%",
+        "--accent-foreground": "348 50% 18%",
+        "--destructive": "0 72% 51%",
+        "--destructive-foreground": "0 0% 100%",
+        "--border": "348 20% 86%",
+        "--input": "348 20% 86%",
+        "--ring": "348 58% 30%",
+        "--chart-1": "348 58% 30%",
+        "--chart-2": "355 45% 48%",
+        "--chart-3": "38 50% 60%",
+        "--chart-4": "15 35% 55%",
+        "--chart-5": "348 40% 18%"
+      }
+    },
+    "terracotta_sunset": {
+      "id": "terracotta_sunset",
+      "name": "Terracotta Sunset",
+      "description": "Bali cliffside warmth, sun-drenched clay, amber glow, and boho warmth.",
+      "preview_swatches": ["#FAF7F5", "#C15C3D", "#301A12", "#F0D7CB"],
+      "css_vars": {
+        "--background": "25 35% 98%",
+        "--foreground": "20 40% 14%",
+        "--card": "25 30% 99%",
+        "--card-foreground": "20 40% 14%",
+        "--popover": "25 30% 99%",
+        "--popover-foreground": "20 40% 14%",
+        "--primary": "16 54% 48%",
+        "--primary-foreground": "0 0% 100%",
+        "--secondary": "22 35% 91%",
+        "--secondary-foreground": "20 45% 16%",
+        "--muted": "22 25% 92%",
+        "--muted-foreground": "20 16% 45%",
+        "--accent": "28 60% 86%",
+        "--accent-foreground": "20 45% 18%",
+        "--destructive": "0 72% 51%",
+        "--destructive-foreground": "0 0% 100%",
+        "--border": "22 22% 86%",
+        "--input": "22 22% 86%",
+        "--ring": "16 54% 48%",
+        "--chart-1": "16 54% 48%",
+        "--chart-2": "32 60% 55%",
+        "--chart-3": "45 50% 65%",
+        "--chart-4": "170 20% 45%",
+        "--chart-5": "20 35% 25%"
+      }
+    },
+    "lavender_dream": {
+      "id": "lavender_dream",
+      "name": "Lavender Dream",
+      "description": "Provencal fields, dreamy lilac mist, ethereal soft violet, and twilight bliss.",
+      "preview_swatches": ["#F9F7FB", "#8365A0", "#231B2C", "#E6DCF0"],
+      "css_vars": {
+        "--background": "270 30% 98%",
+        "--foreground": "275 25% 15%",
+        "--card": "270 25% 99%",
+        "--card-foreground": "275 25% 15%",
+        "--popover": "270 25% 99%",
+        "--popover-foreground": "275 25% 15%",
+        "--primary": "272 26% 46%",
+        "--primary-foreground": "0 0% 100%",
+        "--secondary": "270 22% 92%",
+        "--secondary-foreground": "275 25% 18%",
+        "--muted": "270 18% 93%",
+        "--muted-foreground": "275 12% 46%",
+        "--accent": "272 35% 87%",
+        "--accent-foreground": "275 30% 20%",
+        "--destructive": "0 72% 51%",
+        "--destructive-foreground": "0 0% 100%",
+        "--border": "270 18% 87%",
+        "--input": "270 18% 87%",
+        "--ring": "272 26% 46%",
+        "--chart-1": "272 26% 46%",
+        "--chart-2": "290 30% 60%",
+        "--chart-3": "245 35% 68%",
+        "--chart-4": "340 30% 65%",
+        "--chart-5": "275 22% 28%"
+      }
+    }
+  },
+  "visual_enhancers": {
+    "glassmorphism_card": "backdrop-blur-md bg-card/90 border border-border/80 shadow-[0_4px_20px_rgba(0,0,0,0.03)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.06)] transition-all duration-200 rounded-2xl",
+    "crystal_header": "sticky top-0 z-40 w-full backdrop-blur-xl bg-background/85 border-b border-border/60 supports-[backdrop-filter]:bg-background/75",
+    "hero_gradient_pill": "inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-medium bg-primary/10 text-primary border border-primary/20",
+    "countdown_glow_ring": "relative flex items-center justify-center p-6 bg-gradient-to-b from-primary/5 via-card to-card rounded-3xl border border-primary/20 shadow-sm",
+    "bento_grid_container": "grid grid-cols-1 md:grid-cols-6 lg:grid-cols-12 gap-5",
+    "empty_state_card": "flex flex-col items-center justify-center p-10 text-center rounded-2xl border border-dashed border-border/80 bg-muted/20"
+  },
+  "screens_and_components": {
+    "auth_google_login": {
+      "path": "/login",
+      "layout": "Split-screen or elegant centered card over a warm ambient wedding backdrop (bg-black/30 subtle overlay with high-contrast text).",
+      "components": [
+        "Brand logo 'Weddly' with warm wedding rings icon",
+        "Romantic headline: 'Plan the Day You'll Remember Forever'",
+        "Subtext: 'Collaborate in real-time with your partner in one shared sanctuary.'",
+        "Single 'Sign in with Google' button with official Google SVG icon and data-testid='google-signin-button'",
+        "Access token disclaimer: 'Purchased your license on Lynk? You will enter your token on the next step.'",
+        "Indonesian context chip: 'Dibuat khusus untuk pernikahan Indonesia & Internasional'"
+      ]
+    },
+    "token_activation": {
+      "path": "/activate",
+      "layout": "Distraction-free, centered luxury card with secure license verification feel.",
+      "components": [
+        "Shield / Key lock emblem with gold rim",
+        "Header: 'Activate Your Weddly Workspace'",
+        "Instruction: 'Enter the 16-character access token sent to your email from Lynk'",
+        "Input with auto-formatting mask: WDL-XXXX-XXXX-XXXX and data-testid='token-input'",
+        "Action button: 'Redeem & Unlock Workspace' with data-testid='redeem-token-button'",
+        "Quick demo auto-fill link for sandbox testing: 'Use Sandbox Token (WDL-DEMO-2026-LOVE)'",
+        "Help accordions: 'Where do I find my token?' and 'Contact Weddly Concierge'"
+      ]
+    },
+    "setup_wizard_10_steps": {
+      "path": "/setup",
+      "steps": [
+        {
+          "step": 1,
+          "title": "Couple Names & Roles",
+          "subtitle": "Tell us who is getting married",
+          "fields": ["Partner 1 Full Name & Nickname", "Partner 2 Full Name & Nickname", "Primary Workspace Admin"]
+        },
+        {
+          "step": 2,
+          "title": "Wedding Date & Target City",
+          "subtitle": "When and where is the big day?",
+          "fields": ["Wedding Date (Calendar Picker)", "City/Region (e.g., Jakarta, Bali, Bandung, Surabaya, Yogyakarta, Medan, Overseas)"]
+        },
+        {
+          "step": 3,
+          "title": "Wedding Tradition & Events",
+          "subtitle": "Select all ceremonial events you are planning",
+          "options": ["Akad Nikah", "Resepsi (Reception)", "Pemberkatan Gereja", "Sangjit", "Tea Pai", "Siraman / Midodareni", "Matrimony Mass", "After Party"]
+        },
+        {
+          "step": 4,
+          "title": "Total Target Budget (IDR)",
+          "subtitle": "Set your financial foundation (you can adjust anytime)",
+          "presets": ["Rp 100.000.000", "Rp 250.000.000", "Rp 500.000.000", "Rp 1.000.000.000", "Custom Amount"]
+        },
+        {
+          "step": 5,
+          "title": "Estimated Guest Count",
+          "subtitle": "How many invitations & attendees?",
+          "presets": ["Intimate (< 100 pax)", "Classic (100 - 300 pax)", "Grand (300 - 700 pax)", "Mega Ballroom (700+ pax)"]
+        },
+        {
+          "step": 6,
+          "title": "Wedding Style & Vibe",
+          "subtitle": "The atmosphere you want to evoke",
+          "options": ["Modern Romantic", "Traditional Heritage", "Botanical & Garden", "Intimate Minimalist", "Glamour Ballroom", "Bohemian Coastal"]
+        },
+        {
+          "step": 7,
+          "title": "Initial Color Palette",
+          "subtitle": "Choose one of 8 signature Weddly themes (switchable later)",
+          "theme_options": ["Ivory & Champagne", "Blush Romance", "Sage Garden", "Midnight Elegant", "Dusty Blue", "Burgundy Love", "Terracotta Sunset", "Lavender Dream"]
+        },
+        {
+          "step": 8,
+          "title": "Completed Milestones",
+          "subtitle": "Check what you've already locked in so far",
+          "options": ["Venue Booked", "Wedding Organizer / Planner Hired", "Attire Selected", "Photographer Locked", "Engagement Done", "None yet, starting fresh"]
+        },
+        {
+          "step": 9,
+          "title": "Biggest Challenges & Anxieties",
+          "subtitle": "Weddly AI will tailor suggestions around these",
+          "options": ["Budget Tracking & Overspending", "Vendor Sourcing & Negotiation", "Guest List & Seating Arrangement", "Family Opinions & Traditions", "Time Crunch & Rundown Stress"]
+        },
+        {
+          "step": 10,
+          "title": "Workspace Invite & Review",
+          "subtitle": "Invite your partner via email and launch your workspace",
+          "fields": ["Partner Email Address", "Personalized Invite Note (Optional)"]
+        }
+      ],
+      "navigation_features": [
+        "Step progress bar with numeric dots and percentage indicator (e.g., 'Step 4 of 10: 40%')",
+        "Autosave indicator: 'Draft saved just now'",
+        "Back button with data-testid='wizard-prev-button'",
+        "Next button with data-testid='wizard-next-button'",
+        "Skip step option for optional questions",
+        "Finish button: 'Launch Weddly Workspace' with celebratory micro-confetti"
+      ]
+    },
+    "dashboard": {
+      "path": "/dashboard",
+      "layout": "Asymmetric Bento Grid with visual hierarchy",
+      "grid_structure": {
+        "hero_countdown_widget": "col-span-12 lg:col-span-8: Romantic greeting with Couple Names ('Devina & Arya'), dynamic Days-to-go countdown counter ('184 Days to Go!'), Wedding Date, Location, and quick action buttons ('Add Task', 'Log Expense', 'Ask Weddly AI')",
+        "progress_ring_widget": "col-span-12 md:col-span-6 lg:col-span-4: Circular SVG progress ring displaying Wedding Readiness % (Tasks completed + Vendors booked + Budget allocated)",
+        "tasks_this_week_widget": "col-span-12 lg:col-span-7: High-priority checklist items due this week with quick checkbox, partner avatar badge, and urgency pill",
+        "budget_quick_glance": "col-span-12 md:col-span-6 lg:col-span-5: Total Budget in IDR, Total Spent, Remaining funds, and mini bar progress indicator",
+        "guest_rsvp_snapshot": "col-span-12 md:col-span-6 lg:col-span-4: Attending, Pending, Declined, and Total Invited breakdown with table seating fill rate",
+        "vendor_status_snapshot": "col-span-12 md:col-span-6 lg:col-span-4: Confirmed (e.g. 7/12), In Inquiry, Down Payment paid vs Remaining balance",
+        "ai_assistant_shortcut": "col-span-12 lg:col-span-4: Quick prompt cards ('Help me write a Sangjit speech', 'Compare catering quotes in Jakarta', 'Draft rundown for Akad')"
+      }
+    },
+    "checklist": {
+      "path": "/checklist",
+      "features": [
+        "Timeline group filters: 12+ Months Out, 9-12 Months, 6-9 Months, 3-6 Months, 1-2 Months, 2 Weeks, Wedding Week, Day-Of, Post-Wedding",
+        "Category tags: Legal & Admin (KUA/Catatan Sipil), Venue & Catering, Attire & Beauty, Photo & Video, Decor & Florist, Stationery & Invitations, Rundown & Music",
+        "Dual-partner assignment switcher (Partner A, Partner B, Shared)",
+        "Priority flags (Urgent, High, Medium, Low)",
+        "Batch completion & Custom task creator modal with data-testid='add-task-button'"
+      ]
+    },
+    "budget_planner": {
+      "path": "/budget",
+      "currency": "IDR",
+      "features": [
+        "Executive metric cards: Total Planned Budget, Actual Committed/Paid, Pending Payments, Remaining Buffer",
+        "Category breakdown accordion tables (Venue, Catering, Decoration, Wardrobe, Documentation, Entertainment, Souvenirs & Invites, Ceremonial Fees, Emergency Reserve)",
+        "Item line columns: Item Name, Category, Estimated IDR, Actual IDR, Paid IDR, Status (Quotation, DP Paid, Paid in Full), Vendor link",
+        "Visual Recharts breakdown: Donut chart by category & Spent vs Budget comparison bar",
+        "Quick 'Add Expense' modal with IDR input mask and receipt attachment notes"
+      ]
+    },
+    "guest_manager": {
+      "path": "/guests",
+      "features": [
+        "Guest categorization: Groom's Family, Bride's Family, VIP / High Dignitaries, Mutual Friends, Colleagues, Neighbors",
+        "RSVP tracking: Attending (Pax count), Declined, Awaiting Response",
+        "Events attendance matrix (e.g. Attending Akad only, Attending Reception, Attending Sangjit/Tea Pai)",
+        "Dietary & Notes column (Halal, Vegetarian, Kids, Wheelchair access)",
+        "Table Seating organizer: Visual table cards with drag or select assignment (e.g., Table 1 - VIP Royal, 10/10 seats)",
+        "Export to CSV / WhatsApp invitation link generator"
+      ]
+    },
+    "vendor_hub": {
+      "path": "/vendors",
+      "features": [
+        "Vendor categories: WO/Planner, Venue, Catering, Photography, Videography, Make-up & Hair (MUA), Attire (Kebaya/Suit), Decoration, Entertainment/MC, Souvenir, Mahar/Seserahan",
+        "Status pipeline: Researching -> Contacted -> Quotation Received -> Shortlisted -> Booked (DP Paid) -> Completed",
+        "Vendor detail drawer: Contract amount (IDR), Payment schedule (DP, Term 1, Pelunasan), Contact info, Notes & PDF link",
+        "Rating and review scratchpad for both partners"
+      ]
+    },
+    "timeline_and_rundown": {
+      "path": "/timeline",
+      "features": [
+        "Multi-event switcher (e.g., Day 1: Siraman & Pengajian; Day 2: Akad Nikah 08.00 - 10.30; Day 2: Resepsi 18.30 - 21.30)",
+        "Minute-by-minute Rundown Table (Time, Activity, PIC / Person In Charge, Location, Music/Audio cue, Notes)",
+        "Printable & Shareable PDF view for Family, MC, and Wedding Organizer"
+      ]
+    },
+    "weddly_ai_chat": {
+      "path": "/ai-advisor",
+      "model_selector": {
+        "options": [
+          {
+            "id": "claude-sonnet-4-6",
+            "name": "Claude Sonnet 4.6",
+            "badge": "Best for Creative Writing, Speeches & Nuance",
+            "tag": "Recommended"
+          },
+          {
+            "id": "gemini-3-flash",
+            "name": "Gemini 3 Flash",
+            "badge": "Best for Lightning-fast Budget & Timelines",
+            "tag": "High Speed"
+          }
+        ],
+        "default": "claude-sonnet-4-6"
+      },
+      "starter_prompts": [
+        "Bantu susun rundown detail untuk prosesi Akad Nikah dan Resepsi malam (500 tamu).",
+        "Hitung proporsi alokasi budget Rp 300 juta untuk pernikahan di Jakarta.",
+        "Buatkan draf teks sambutan keluarga untuk prosesi Sangjit & Tea Pai.",
+        "Daftar checklist barang seserahan adat Jawa / Sunda modern.",
+        "Ide souvenir pernikahan ramah lingkungan di bawah Rp 25.000 per pcs."
+      ],
+      "chat_interface": [
+        "Model switcher pill toggle in top right of header",
+        "Message bubbles with copy-to-clipboard, insert-to-checklist, and insert-to-budget actions",
+        "Typing indicator with animated subtle sparkle",
+        "Full support for bilingual Indonesian & English prompts"
+      ]
+    },
+    "settings_and_collaboration": {
+      "path": "/settings",
+      "tabs": [
+        {
+          "id": "wedding_profile",
+          "label": "Wedding Profile",
+          "content": "Couple names, wedding date, city, wedding hashtags (#DevinaAryaForever), cover photo upload"
+        },
+        {
+          "id": "theme_customizer",
+          "label": "Visual Theme",
+          "content": "Live 8-palette theme switcher with instant chrome recoloring and preview card"
+        },
+        {
+          "id": "partners",
+          "label": "Partner & Access",
+          "content": "Partner 1 & Partner 2 emails, permissions (Full Access / View Only), invite link generator"
+        },
+        {
+          "id": "license",
+          "label": "License & Lynk Token",
+          "content": "Active Lynk token code (WDL-XXXX-XXXX-XXXX), Activated date, Lifetime Workspace status badge"
+        }
+      ]
+    }
+  },
+  "navigation_structure": {
+    "desktop_sidebar": {
+      "type": "Fixed left rail / expanding drawer with glassmorphism",
+      "width": "w-64",
+      "brand_header": "Weddly Logo + Current Theme Badge + Countdown Chip",
+      "primary_nav_items": [
+        { "name": "Dashboard", "path": "/dashboard", "icon": "LayoutDashboard", "testid": "nav-dashboard" },
+        { "name": "Checklist", "path": "/checklist", "icon": "CheckSquare", "testid": "nav-checklist" },
+        { "name": "Budget (IDR)", "path": "/budget", "icon": "WalletCards", "testid": "nav-budget" },
+        { "name": "Guest List", "path": "/guests", "icon": "Users", "testid": "nav-guests" },
+        { "name": "Vendors", "path": "/vendors", "icon": "Briefcase", "testid": "nav-vendors" },
+        { "name": "Timeline & Rundown", "path": "/timeline", "icon": "CalendarClock", "testid": "nav-timeline" },
+        { "name": "Weddly AI", "path": "/ai-advisor", "icon": "Sparkles", "testid": "nav-ai-advisor" },
+        { "name": "Settings & Themes", "path": "/settings", "icon": "Palette", "testid": "nav-settings" }
+      ],
+      "footer_widget": "Partner Avatars ('A & D') + Active Theme Swatch Picker + Quick Sign Out"
+    },
+    "mobile_bottom_nav": {
+      "type": "Fixed bottom floating glass bar",
+      "height": "h-16",
+      "classes": "md:hidden fixed bottom-0 left-0 right-0 z-50 bg-card/95 backdrop-blur-xl border-t border-border px-3 flex items-center justify-around",
+      "items": [
+        { "name": "Home", "path": "/dashboard", "icon": "LayoutDashboard", "testid": "mobile-nav-home" },
+        { "name": "Tasks", "path": "/checklist", "icon": "CheckSquare", "testid": "mobile-nav-tasks" },
+        { "name": "Budget", "path": "/budget", "icon": "WalletCards", "testid": "mobile-nav-budget" },
+        { "name": "Guests", "path": "/guests", "icon": "Users", "testid": "mobile-nav-guests" },
+        { "name": "AI & More", "path": "/ai-advisor", "icon": "Sparkles", "testid": "mobile-nav-more" }
+      ]
+    }
+  },
+  "curated_media_assets": {
+    "hero_and_login_backdrops": [
+      {
+        "id": "hero_couple_aesthetic",
+        "category": "hero_backdrop",
+        "url": "https://images.unsplash.com/photo-1617785258979-b50ebd43871e?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1ODF8MHwxfHNlYXJjaHwzfHxlbGVnYW50JTIwd2VkZGluZyUyMGNvdXBsZSUyMGFlc3RoZXRpY3xlbnwwfHx8fDE3ODcxMjI2MTN8MA&ixlib=rb-4.1.0&q=85",
+        "description": "Elegant bride in white gown holding timeless pastel bouquet, soft atmospheric lighting.",
+        "suggested_usage": "Login screen right side banner / Welcome hero background with bg-black/40 overlay"
+      },
+      {
+        "id": "reception_dinner_table",
+        "category": "venue_atmosphere",
+        "url": "https://images.unsplash.com/photo-1740120424442-ccd013ec9581?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzV8MHwxfHNlYXJjaHwzfHxsdXh1cnklMjB3ZWRkaW5nJTIwcmVjZXB0aW9uJTIwZGlubmVyJTIwdGFibGV8ZW58MHx8fHwxNzg3MTIyNjEzfDA&ixlib=rb-4.1.0&q=85",
+        "description": "Long luxury dining table set with warm candles, floral runners, and crystal glasses.",
+        "suggested_usage": "Budget & Vendor section header banner / Venue Inspiration showcase"
+      },
+      {
+        "id": "indonesian_modern_floral_arch",
+        "category": "ceremony_arch",
+        "url": "https://images.unsplash.com/photo-1738225734899-30852be7e396?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjY2NjV8MHwxfHNlYXJjaHwxfHxpbmRvbmVzaWFuJTIwbW9kZXJuJTIwd2VkZGluZyUyMGZsb3JhbCUyMGFyY2h8ZW58MHx8fHwxNzg3MTIyNjEzfDA&ixlib=rb-4.1.0&q=85",
+        "description": "Modern circular wedding ceremony stage arch with lush white floral and greenery aisle.",
+        "suggested_usage": "Setup Wizard Step 3 (Traditions & Style) preview backdrop"
+      },
+      {
+        "id": "javanese_traditional_ceremony",
+        "category": "cultural_tradition",
+        "url": "https://images.pexels.com/photos/15973347/pexels-photo-15973347.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "description": "Traditional Indonesian wedding ceremony with bride and groom in authentic attire.",
+        "suggested_usage": "Ceremony types selector (Akad / Traditional events card)"
+      },
+      {
+        "id": "table_setting_gold_plate",
+        "category": "table_decor",
+        "url": "https://images.unsplash.com/photo-1615500025837-cf3a8716c83d?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzV8MHwxfHNlYXJjaHwxfHxsdXh1cnklMjB3ZWRkaW5nJTIwcmVjZXB0aW9uJTIwZGlubmVyJTIwdGFibGV8ZW58MHx8fHwxNzg3MTIyNjEzfDA&ixlib=rb-4.1.0&q=85",
+        "description": "Stainless cutlery and gold rimmed charger plate on fine dining table.",
+        "suggested_usage": "Guest seating & Table management visual banner"
+      }
+    ]
+  },
+  "micro_interactions_and_motion": {
+    "library": "framer-motion",
+    "theme_switch_transition": "Apply dynamic CSS variable transitions using `style={{ transition: 'background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease' }}` to root container",
+    "wizard_step_transition": {
+      "initial": { "opacity": 0, "x": 20 },
+      "animate": { "opacity": 1, "x": 0 },
+      "exit": { "opacity": 0, "x": -20 },
+      "transition": { "duration": 0.25, "ease": "easeOut" }
+    },
+    "card_hover_lift": "hover:-translate-y-1 hover:shadow-md transition-all duration-200 cursor-pointer",
+    "checkbox_toggle": "Smooth pulse scale effect on task completion with subtle strikethrough text transition"
+  },
+  "testing_attributes_convention": {
+    "rules": "All interactive buttons, inputs, tabs, selectors, metrics, and modals MUST feature a explicit `data-testid` formatted in kebab-case.",
+    "core_test_ids": {
+      "auth": ["google-signin-button", "token-input", "redeem-token-button", "sandbox-token-btn"],
+      "wizard": ["wizard-step-indicator", "wizard-prev-button", "wizard-next-button", "wizard-finish-button", "wizard-option-card"],
+      "dashboard": ["dashboard-countdown-badge", "dashboard-progress-ring", "dashboard-quick-task-checkbox", "dashboard-add-task-btn", "dashboard-log-expense-btn", "dashboard-theme-toggle"],
+      "checklist": ["checklist-filter-tab", "add-task-button", "task-item-checkbox", "task-priority-badge", "task-assignee-badge"],
+      "budget": ["budget-total-planned", "budget-actual-committed", "budget-add-expense-btn", "budget-category-row", "budget-currency-input"],
+      "guests": ["guest-search-input", "guest-add-btn", "guest-filter-rsvp", "guest-table-selector", "guest-row-item"],
+      "vendors": ["vendor-category-filter", "vendor-add-btn", "vendor-status-pill", "vendor-card-item"],
+      "timeline": ["timeline-event-tab", "rundown-add-row-btn", "rundown-table-row", "rundown-export-pdf-btn"],
+      "ai_advisor": ["ai-model-selector-claude", "ai-model-selector-gemini", "ai-chat-input", "ai-send-message-btn", "ai-prompt-chip"],
+      "settings": ["settings-tab-profile", "settings-tab-theme", "settings-tab-partners", "theme-palette-option"]
+    }
+  },
+  "instructions_to_main_agent": [
+    "1. Read this entire JSON guideline file and apply the default 'ivory_champagne' theme variables as default in src/index.css or root theme provider.",
+    "2. Implement a unified `ThemeContext` or CSS variable controller in React that allows couples to switch between all 8 themes instantly, persisting choice in localStorage and backend state.",
+    "3. Build the 10-step Setup Wizard cleanly with full responsive design, step progression, back/next validation, and direct skip or autofill capabilities.",
+    "4. Ensure all currency inputs and displays adhere to IDR standard (e.g. `Rp 150.000.000`), using clean formatters without rounding errors.",
+    "5. Include Indonesian wedding ceremonial types natively (Akad Nikah, Resepsi, Sangjit, Tea Pai, Pemberkatan Gereja, Siraman).",
+    "6. Build the Weddly AI chat interface with a working model switcher toggle between 'Claude Sonnet 4.6' and 'Gemini 3 Flash' and rich starter prompt chips.",
+    "7. Guarantee mobile responsiveness with the floating bottom navigation bar (`md:hidden`) and a sleek desktop sidebar.",
+    "8. Maintain high contrast text readability (never use low-contrast grey on grey, never use fully transparent backgrounds on dropdowns or modals).",
+    "9. Add `data-testid` to all interactive and key metric components as specified.",
+    "10. Use Sonner for toasts (e.g., 'Draft saved', 'Expense added', 'Theme applied', 'Token activated')."
+  ],
+  "universal_guidelines_for_main_agent": [
+    "You tend to converge toward generic, 'on distribution' outputs. In frontend design, this creates what users call the 'AI slop' aesthetic. Avoid this: make creative, distinctive frontends that surprise and delight.",
+    "Dark colors look good when used independently without gradients. DO NOT use dark colors as gradients.",
+    "Don't make generic centered layouts, simplistic gradients, and uniform styling.",
+    "Create depth through layered design elements with z-index hierarchy and delicate glassmorphism backdrop filters (12-24px blur).",
+    "You MUST NOT apply universal transition (e.g. `transition: all`). This results in breaking transforms. Always add transitions for specific interactive elements like button, input excluding transforms.",
+    "You MUST NOT center align the app container (do not add `.App { text-align: center; }`).",
+    "Always use modern button styles like pill-shaped, or sharp button with interaction animations & color relevant to the app style.",
+    "NEVER use AI assistant Emoji characters like 🤖🧠💭💡🔮🎯 for icons. Use Lucide React icons instead.",
+    "Every interaction needs micro-animations: hover states, transitions, entrance animations. Static = dead.",
+    "Use 2-3x more spacing than feels comfortable. Containers with borders must have internal padding (p-6 or p-8) to prevent text collision.",
+    "Main agent relies on the curated image URLs provided in this file. NEVER use fake placeholder URLs."
+  ]
+}
