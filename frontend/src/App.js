@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-route
 import { Toaster } from "sonner";
 import "@/App.css";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
+import { LanguageProvider } from "@/context/LanguageContext";
 import Login from "@/pages/Login";
 import AuthCallback from "@/pages/AuthCallback";
 import Activate from "@/pages/Activate";
@@ -53,10 +54,12 @@ export default function App() {
   return (
     <div className="App">
       <BrowserRouter>
-        <AuthProvider>
-          <Router />
-          <Toaster richColors position="top-right" />
-        </AuthProvider>
+        <LanguageProvider>
+          <AuthProvider>
+            <Router />
+            <Toaster richColors position="top-right" />
+          </AuthProvider>
+        </LanguageProvider>
       </BrowserRouter>
     </div>
   );
