@@ -1,5 +1,4 @@
 {
-  "overrides": { "ajv": "^8.17.1" },
   "name": "frontend",
   "version": "0.1.0",
   "private": true,
@@ -79,6 +78,7 @@
     ]
   },
   "devDependencies": {
+    "ajv": "^8.17.1",
     "ajv-keywords": "5.1.0",
     "@babel/plugin-proposal-private-property-in-object": "7.21.11",
     "@craco/craco": "7.1.0",
