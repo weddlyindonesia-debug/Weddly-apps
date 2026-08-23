@@ -4,6 +4,7 @@ import "@/App.css";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { LanguageProvider } from "@/context/LanguageContext";
 import Login from "@/pages/Login";
+import Register from "@/pages/Register";
 import AuthCallback from "@/pages/AuthCallback";
 import Activate from "@/pages/Activate";
 import Setup from "@/pages/Setup";
@@ -41,6 +42,7 @@ function Router() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
+      <Route path="/register" element={<Register />} />
       <Route path="/activate" element={<Protected requireWedding={false} requireSetup={false}><Activate /></Protected>} />
       <Route path="/setup" element={<Protected requireSetup={false}><Setup /></Protected>} />
       <Route path="/dashboard" element={<Protected><AppShell><Dashboard /></AppShell></Protected>} />
@@ -51,7 +53,7 @@ function Router() {
       <Route path="/timeline" element={<Protected><AppShell><Timeline /></AppShell></Protected>} />
       <Route path="/ai" element={<Protected><AppShell><AI /></AppShell></Protected>} />
       <Route path="/settings" element={<Protected><AppShell><Settings /></AppShell></Protected>} />
-      <Route path="/admin" element={<Protected requireSetup={false}><AdminGuard><AppShell><Admin /></AppShell></AdminGuard></Protected>} />
+      <Route path="/admin" element={<Protected requireWedding={false} requireSetup={false}><AdminGuard><AppShell><Admin /></AppShell></AdminGuard></Protected>} />
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
   );

@@ -20,19 +20,41 @@ export default function Guests() {
   const [rsvpFilter, setRsvpFilter] = useState("all");
   const [form, setForm] = useState({ name: "", group: "Friends", phone: "", number_of_guests: 1, rsvp: "pending", table: "" });
 
-  const load = () => api.get("/guests").then(({ data }) => setData(data));
+  const load = () => api.get("/guests").then(({ data }) => setData({ guests: data.guests || [], counts: data.counts || {} })).catch((e) => {
+    toast.error(e?.response?.data?.detail || "Gagal memuat daftar tamu");
+  });
   useEffect(() => { load(); }, []);
 
   const add = async () => {
     if (!form.name.trim()) return toast.error(t("guests.name_required"));
-    await api.post("/guests", form); setOpen(false);
-    setForm({ name: "", group: "Friends", phone: "", number_of_guests: 1, rsvp: "pending", table: "" });
-    load(); toast.success(t("guests.added"));
+    try {
+      await api.post("/guests", form);
+      setOpen(false);
+      setForm({ name: "", group: "Friends", phone: "", number_of_guests: 1, rsvp: "pending", table: "" });
+      load();
+      toast.success(t("guests.added"));
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Gagal menambah tamu");
+    }
   };
-  const update = async (g, patch) => { await api.patch(`/guests/${g.guest_id}`, patch); load(); };
-  const remove = async (g) => { await api.delete(`/guests/${g.guest_id}`); load(); };
+  const update = async (g, patch) => {
+    try {
+      await api.patch(`/guests/${g.guest_id}`, patch);
+      load();
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Gagal memperbarui tamu");
+    }
+  };
+  const remove = async (g) => {
+    try {
+      await api.delete(`/guests/${g.guest_id}`);
+      load();
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Gagal menghapus tamu");
+    }
+  };
 
-  const filtered = data.guests.filter((g) => (rsvpFilter === "all" || g.rsvp === rsvpFilter) && g.name.toLowerCase().includes(q.toLowerCase()));
+  const filtered = (data.guests || []).filter((g) => (rsvpFilter === "all" || g.rsvp === rsvpFilter) && g.name.toLowerCase().includes(q.toLowerCase()));
   const filterLabel = { all: t("check.filter_all"), attending: t("guests.attending"), pending: t("guests.pending"), declined: t("guests.declined") };
 
   return (

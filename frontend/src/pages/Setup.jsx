@@ -37,6 +37,11 @@ const GUEST_PRESETS = [
 
 const TOTAL_STEPS = 10;
 
+const OptionCard = ({ selected, onClick, children, testid }) => (
+  <button type="button" data-testid={testid} onClick={onClick}
+    className={`text-left rounded-2xl border p-4 transition-shadow duration-200 hover:shadow-md ${selected ? "border-primary bg-primary/5 ring-1 ring-primary" : "border-border bg-card"}`}>{children}</button>
+);
+
 export default function Setup() {
   const { t } = useT();
   const { wedding, refresh } = useAuth();
@@ -78,10 +83,17 @@ export default function Setup() {
     try {
       const payload = { ...form, ...extra, setup_step: step };
       await api.patch("/wedding", payload);
-    } catch { toast.error("Could not save"); } finally { setSaving(false); }
+      return true;
+    } catch { toast.error("Could not save"); return false; } finally { setSaving(false); }
   };
 
-  const next = async () => { if (step < TOTAL_STEPS) { await persist(); setStep(step + 1); } };
+  const next = async () => {
+    if (step < TOTAL_STEPS) {
+      // Jangan maju step jika data gagal disimpan, agar tidak ada data yang hilang
+      const ok = await persist();
+      if (ok) setStep(step + 1);
+    }
+  };
   const prev = () => { if (step > 1) setStep(step - 1); };
 
   const finish = async () => {
@@ -95,11 +107,6 @@ export default function Setup() {
   };
 
   const pct = Math.round((step / TOTAL_STEPS) * 100);
-
-  const OptionCard = ({ selected, onClick, children, testid }) => (
-    <button type="button" data-testid={testid} onClick={onClick}
-      className={`text-left rounded-2xl border p-4 transition-shadow duration-200 hover:shadow-md ${selected ? "border-primary bg-primary/5 ring-1 ring-primary" : "border-border bg-card"}`}>{children}</button>
-  );
 
   return (
     <div className="min-h-screen bg-background px-4 py-8 md:py-14 relative">

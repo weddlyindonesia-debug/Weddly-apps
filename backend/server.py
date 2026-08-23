@@ -5,7 +5,9 @@ import os
 import re
 import uuid
 import secrets
+import hashlib
 import logging
+from contextlib import asynccontextmanager
 from pathlib import Path
 from datetime import datetime, timezone, timedelta
 from typing import List, Optional, Any, Dict
@@ -15,14 +17,15 @@ from fastapi.responses import StreamingResponse
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
+from pymongo.errors import DuplicateKeyError
 from pydantic import BaseModel, Field, EmailStr
 import httpx
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / ".env")
 
-MONGO_URL = os.environ["MONGO_URL"]
-DB_NAME = os.environ["DB_NAME"]
+MONGO_URL = os.environ.get("MONGO_URL","mongodb://127.0.0.1:27017")
+DB_NAME=os.environ.get("DB_NAME","weddly")
 EMERGENT_LLM_KEY = os.environ.get("EMERGENT_LLM_KEY", "")
 ADMIN_EMAILS = {e.strip().lower() for e in os.environ.get("ADMIN_EMAILS", "").split(",") if e.strip()}
 ADMIN_API_KEY = os.environ.get("ADMIN_API_KEY", "")
@@ -33,7 +36,21 @@ db = client[DB_NAME]
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
 logger = logging.getLogger("weddly")
 
-app = FastAPI(title="Weddly API", version="1.0.0")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Ensure indexes
+    await db.users.create_index("email", unique=True, sparse=True)
+    await db.users.create_index("phone", unique=True, sparse=True)
+    await db.user_sessions.create_index("session_token", unique=True)
+    await db.wedding_members.create_index([("wedding_id", 1), ("user_id", 1)], unique=True)
+    logger.info(f"Connected to MongoDB: {DB_NAME}")
+    yield
+    client.close()
+    logger.info("MongoDB connection closed")
+
+
+app = FastAPI(title="Weddly API", version="1.0.0", lifespan=lifespan)
 api = APIRouter(prefix="/api")
 
 
@@ -50,18 +67,26 @@ def make_uid(prefix: str) -> str:
     return f"{prefix}_{uuid.uuid4().hex[:12]}"
 
 
-def generate_token_code() -> str:
-    """WDL-XXXX-XXXX-XXXX using cryptographically secure alphabet."""
-    alpha = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"  # avoid ambiguous
-    parts = ["".join(secrets.choice(alpha) for _ in range(4)) for _ in range(3)]
-    return "WDL-" + "-".join(parts)
+PHONE_RE = re.compile(r"^\+?[0-9]{8,15}$")
 
 
-TOKEN_RE = re.compile(r"^WDL-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$")
+def normalize_phone(raw: str) -> str:
+    return re.sub(r"[\s\-]", "", raw or "")
 
 
-def normalize_token(raw: str) -> str:
-    return re.sub(r"\s+", "", raw or "").upper()
+def hash_password(password: str) -> str:
+    salt = secrets.token_hex(16)
+    dk = hashlib.pbkdf2_hmac("sha256", password.encode(), salt.encode(), 100_000)
+    return f"{salt}:{dk.hex()}"
+
+
+def verify_password(password: str, stored: str) -> bool:
+    try:
+        salt, hash_hex = stored.split(":")
+        dk = hashlib.pbkdf2_hmac("sha256", password.encode(), salt.encode(), 100_000)
+        return dk.hex() == hash_hex
+    except Exception:
+        return False
 
 
 # ---------- Auth ----------
@@ -94,6 +119,8 @@ async def require_admin(user: Dict[str, Any] = Depends(get_current_user), x_admi
         return user
     if user.get("email", "").lower() in ADMIN_EMAILS:
         return user
+    if user.get("phone", "") and user.get("phone", "") in ADMIN_EMAILS:
+        return user
     raise HTTPException(status_code=403, detail="Admin access required")
 
 
@@ -117,8 +144,21 @@ async def require_wedding(user: Dict[str, Any] = Depends(get_current_user)) -> D
 
 
 # ---------- Models ----------
-class TokenActivate(BaseModel):
-    token_code: str
+class RegisterIn(BaseModel):
+    phone: str
+    password: str
+    name: str
+    ref: Optional[str] = None  # wedding_id from a partner's invite link, if any
+
+
+class LoginIn(BaseModel):
+    phone: str
+    password: str
+
+# --- TAMBAHAN BARU: MODEL GANTI PASSWORD ---
+class ChangePasswordIn(BaseModel):
+    current_password: str
+    new_password: str
 
 
 class WeddingSetup(BaseModel):
@@ -273,6 +313,11 @@ class ThemeUpdate(BaseModel):
     theme_id: str
 
 
+# --- TAMBAHAN BARU: MODEL ADMIN RESET PASSWORD ---
+class AdminResetPasswordIn(BaseModel):
+    new_password: Optional[str] = None  # Jika kosong, sistem akan generate otomatis
+
+
 # ---------- Auth routes ----------
 @api.post("/auth/session")
 async def create_session(request: Request, response: Response):
@@ -325,17 +370,57 @@ async def create_session(request: Request, response: Response):
     return {"user": user}
 
 
+# ---------- DEV LOGIN (testing only, bypass Google) ----------
+@api.post("/auth/dev-login")
+async def dev_login(response: Response):
+    # Security: this endpoint must never be reachable in production.
+    # Enable it explicitly for local development via ENABLE_DEV_LOGIN=1 in backend/.env
+    if os.environ.get("ENABLE_DEV_LOGIN", "").strip().lower() not in ("1", "true", "yes"):
+        raise HTTPException(status_code=404, detail="Not found")
+    email = "dev@weddly.local"
+    existing = await db.users.find_one({"email": email}, {"_id": 0})
+    if existing:
+        user_id = existing["user_id"]
+    else:
+        user_id = make_uid("user")
+        await db.users.insert_one({
+            "user_id": user_id,
+            "email": email,
+            "name": "Dev User",
+            "picture": "",
+            "created_at": now_utc().isoformat(),
+        })
+
+    session_token = secrets.token_hex(32)
+    expires = now_utc() + timedelta(days=7)
+    await db.user_sessions.insert_one({
+        "user_id": user_id,
+        "session_token": session_token,
+        "expires_at": expires.isoformat(),
+        "created_at": now_utc().isoformat(),
+    })
+    response.set_cookie(
+        "session_token", session_token,
+        httponly=True, secure=False, samesite="lax",
+        path="/", max_age=7 * 24 * 60 * 60,
+    )
+    user = await db.users.find_one({"user_id": user_id}, {"_id": 0})
+    return {"user": user}
+
+
 @api.get("/auth/me")
 async def me(user: Dict[str, Any] = Depends(get_current_user)):
+    # Never leak the password hash to the client
+    safe_user = {k: v for k, v in user.items() if k != "password_hash"}
     member = await get_active_membership(user)
     wedding = None
     if member:
         wedding = await db.wedding_workspaces.find_one({"wedding_id": member["wedding_id"]}, {"_id": 0})
     return {
-        "user": user,
+        "user": safe_user,
         "membership": member,
         "wedding": wedding,
-        "is_admin": user.get("email", "").lower() in ADMIN_EMAILS,
+        "is_admin": user.get("email", "").lower() in ADMIN_EMAILS or user.get("phone", "") in ADMIN_EMAILS,
     }
 
 
@@ -348,167 +433,318 @@ async def logout(request: Request, response: Response):
     return {"ok": True}
 
 
-# ---------- Admin: tokens ----------
-@api.post("/admin/tokens/generate")
-async def admin_generate_tokens(request: Request, user: Dict[str, Any] = Depends(require_admin)):
-    body = await request.json()
-    count = max(1, min(int(body.get("count", 1)), 100))
-    package = body.get("package", "weddly-standard")
-    created = []
-    for _ in range(count):
-        # unique retry loop
-        while True:
-            code = generate_token_code()
-            exists = await db.access_tokens.find_one({"token_code": code})
-            if not exists:
-                break
-        doc = {
-            "token_id": make_uid("tok"),
-            "token_code": code,
-            "status": "unused",
-            "package": package,
-            "max_members": 2,
-            "current_member_count": 0,
-            "wedding_id": None,
+# ---------- Register / Login (phone + password) ----------
+@api.post("/auth/register")
+async def register(payload: RegisterIn):
+    phone = normalize_phone(payload.phone)
+    if not PHONE_RE.match(phone):
+        raise HTTPException(status_code=400, detail="Nomor HP tidak valid")
+    if len(payload.password) < 6:
+        raise HTTPException(status_code=400, detail="Password minimal 6 karakter")
+    if not payload.name.strip():
+        raise HTTPException(status_code=400, detail="Nama wajib diisi")
+    existing = await db.users.find_one({"phone": phone})
+    if existing:
+        raise HTTPException(status_code=409, detail="Nomor HP sudah terdaftar")
+
+    # Optional partner invite link: ?ref=<wedding_id> shared by the main account.
+    pending_wedding_id = None
+    if payload.ref:
+        ref = payload.ref.strip()
+        ref_wedding = await db.wedding_workspaces.find_one({"wedding_id": ref}, {"_id": 0})
+        if not ref_wedding:
+            raise HTTPException(status_code=400, detail="Link undangan tidak valid")
+        active_count = await db.wedding_members.count_documents({"wedding_id": ref, "status": "active"})
+        pending_count = await db.users.count_documents({"pending_wedding_id": ref, "status": "pending"})
+        if active_count + pending_count >= 2:
+            raise HTTPException(status_code=400, detail="Link undangan ini sudah digunakan oleh pasangan")
+        pending_wedding_id = ref
+
+    user_id = make_uid("user")
+    try:
+        await db.users.insert_one({
+            "user_id": user_id,
+            "phone": phone,
+            "name": payload.name.strip(),
+            "password_hash": hash_password(payload.password),
+            "status": "pending",
+            "pending_wedding_id": pending_wedding_id,
             "created_at": now_utc().isoformat(),
-            "activated_at": None,
-            "expires_at": None,
-            "revoked_at": None,
-            "metadata": {"created_by": user["user_id"]},
-        }
-        await db.access_tokens.insert_one(doc)
-        created.append({k: v for k, v in doc.items() if k != "_id"})
-    return {"tokens": created}
+        })
+    except DuplicateKeyError:
+        # Unique index on phone catches concurrent registrations of the same number
+        raise HTTPException(status_code=409, detail="Nomor HP sudah terdaftar")
+    return {"ok": True, "message": "Pendaftaran berhasil. Menunggu persetujuan admin."}
 
 
-@api.get("/admin/tokens")
-async def admin_list_tokens(user: Dict[str, Any] = Depends(require_admin)):
-    rows = await db.access_tokens.find({}, {"_id": 0}).sort("created_at", -1).to_list(500)
-    return {"tokens": rows}
+@api.post("/auth/login")
+async def login(payload: LoginIn, response: Response):
+    phone = normalize_phone(payload.phone)
+    user = await db.users.find_one({"phone": phone})
+    if not user or not verify_password(payload.password, user.get("password_hash", "")):
+        raise HTTPException(status_code=401, detail="Nomor HP atau password salah")
+    if user.get("status") == "pending":
+        raise HTTPException(status_code=403, detail="Akun Anda masih menunggu persetujuan admin")
+    if user.get("status") == "rejected":
+        raise HTTPException(status_code=403, detail="Pendaftaran Anda ditolak. Hubungi admin.")
+
+    session_token = secrets.token_hex(32)
+    expires = now_utc() + timedelta(days=7)
+    await db.user_sessions.insert_one({
+        "user_id": user["user_id"],
+        "session_token": session_token,
+        "expires_at": expires.isoformat(),
+        "created_at": now_utc().isoformat(),
+    })
+    response.set_cookie(
+        "session_token", session_token,
+        httponly=True, secure=False, samesite="lax",
+        path="/", max_age=7 * 24 * 60 * 60,
+    )
+    user.pop("_id", None)
+    user.pop("password_hash", None)
+    return {"user": user}
+
+# --- TAMBAHAN BARU: ROUTE GANTI PASSWORD ---
+@api.post("/auth/change-password")
+async def change_password(payload: ChangePasswordIn, user: Dict[str, Any] = Depends(get_current_user)):
+    stored_hash = user.get("password_hash", "")
+    # 1. Verifikasi password lama.
+    # User yang dibuat via OAuth (Google) belum punya password: izinkan mereka
+    # mengatur password pertama kali tanpa memverifikasi password lama.
+    if stored_hash and not verify_password(payload.current_password, stored_hash):
+        raise HTTPException(status_code=400, detail="Password saat ini salah.")
+
+    # 2. Validasi password baru (minimal 6 karakter, sesuai aturan registrasi)
+    if len(payload.new_password) < 6:
+        raise HTTPException(status_code=400, detail="Password baru minimal 6 karakter.")
+
+    # 3. Hash password baru dan simpan ke database
+    new_hashed = hash_password(payload.new_password)
+    await db.users.update_one(
+        {"user_id": user["user_id"]},
+        {"$set": {"password_hash": new_hashed, "updated_at": now_utc().isoformat()}}
+    )
+    
+    # Opsional (Disarankan): Hapus semua sesi login user agar user harus login ulang
+    # dengan password baru demi keamanan.
+    await db.user_sessions.delete_many({"user_id": user["user_id"]})
+
+    return {"message": "Password berhasil diubah."}
 
 
-# ---------- Token activation ----------
-@api.post("/wedding/activate")
-async def activate_token(payload: TokenActivate, user: Dict[str, Any] = Depends(get_current_user)):
-    code = normalize_token(payload.token_code)
-    if not TOKEN_RE.match(code):
-        raise HTTPException(status_code=400, detail="Invalid token format. Expected WDL-XXXX-XXXX-XXXX.")
+# ---------- Admin: user approval ----------
+class AdminApproveIn(BaseModel):
+    # If provided, the approved user joins this existing wedding as partner 2
+    # instead of getting a brand-new workspace of their own.
+    pair_wedding_id: Optional[str] = None
 
-    token = await db.access_tokens.find_one({"token_code": code}, {"_id": 0})
-    if not token:
-        raise HTTPException(status_code=404, detail="The access token is invalid. Please check the code and try again.")
-    if token["status"] == "revoked":
-        raise HTTPException(status_code=403, detail="This access token is no longer active.")
-    if token["status"] == "expired":
-        raise HTTPException(status_code=403, detail="This Weddly access has expired.")
 
-    # Idempotent: if user is already an active member of this token's wedding, return that
-    if token.get("wedding_id"):
-        existing_member = await db.wedding_members.find_one({
-            "wedding_id": token["wedding_id"],
-            "user_id": user["user_id"],
-            "status": "active",
-        }, {"_id": 0})
-        if existing_member:
-            wed = await db.wedding_workspaces.find_one({"wedding_id": token["wedding_id"]}, {"_id": 0})
-            return {"wedding": wed, "membership": existing_member, "reused": True}
+@api.get("/admin/users/pending")
+async def admin_list_pending(user: Dict[str, Any] = Depends(require_admin)):
+    rows = await db.users.find({"status": "pending"}, {"_id": 0, "password_hash": 0}).sort("created_at", -1).to_list(500)
+    for r in rows:
+        r["linked_partner"] = None
+        wid = r.get("pending_wedding_id")
+        if wid:
+            member = await db.wedding_members.find_one({"wedding_id": wid, "status": "active"}, {"_id": 0})
+            if member:
+                partner = await db.users.find_one({"user_id": member["user_id"]}, {"_id": 0, "password_hash": 0})
+                if partner:
+                    r["linked_partner"] = {"name": partner.get("name"), "phone": partner.get("phone")}
+    return {"users": rows}
 
-    # NOTE: A user may belong to multiple wedding workspaces (e.g. admin testing multiple tokens).
-    # `get_active_membership` returns the most recently joined one.
 
-    # Concurrency guard: atomic increment on current_member_count, but only if under limit
-    # Use findOneAndUpdate with conditional filter
-    if token["status"] == "unused":
-        # Try to claim: transition to active, create wedding, then add first member
-        wedding_id = make_uid("wed")
-        now_iso = now_utc().isoformat()
-        # Atomic claim: only if status is still 'unused'
-        claimed = await db.access_tokens.find_one_and_update(
-            {"token_code": code, "status": "unused"},
-            {"$set": {
-                "status": "active",
-                "wedding_id": wedding_id,
-                "activated_at": now_iso,
-                "current_member_count": 1,
-            }},
-            return_document=True,
+@api.get("/admin/weddings/unpaired")
+async def admin_list_unpaired_weddings(admin: Dict[str, Any] = Depends(require_admin)):
+    """Weddings that currently have only 1 active partner, so an admin can pair
+    a newly-approved user into them as partner 2."""
+    pipeline = [
+        {"$match": {"status": "active"}},
+        {"$group": {"_id": "$wedding_id", "count": {"$sum": 1}}},
+        {"$match": {"count": 1}},
+    ]
+    grouped = await db.wedding_members.aggregate(pipeline).to_list(1000)
+    wedding_ids = [g["_id"] for g in grouped]
+    if not wedding_ids:
+        return {"weddings": []}
+    weddings = await db.wedding_workspaces.find({"wedding_id": {"$in": wedding_ids}}, {"_id": 0}).to_list(1000)
+    result = []
+    for w in weddings:
+        member = await db.wedding_members.find_one(
+            {"wedding_id": w["wedding_id"], "status": "active"}, {"_id": 0}
         )
-        if claimed:
-            wed_doc = {
-                "wedding_id": wedding_id,
-                "token_id": token["token_id"],
-                "token_code": code,
-                "partner1_name": "",
-                "partner1_nickname": "",
-                "partner2_name": "",
-                "partner2_nickname": "",
-                "wedding_date": None,
-                "date_status": "undecided",
-                "country": "",
-                "city": "",
-                "venue_ceremony": "",
-                "venue_reception": "",
-                "venue_mode": "undecided",
-                "budget_amount": 0,
-                "budget_currency": "IDR",
-                "guest_count": 0,
-                "wedding_types": [],
-                "wedding_styles": [],
-                "wedding_colors": [],
-                "completed_items": [],
-                "challenges": [],
-                "priorities": [],
-                "theme_id": "ivory_champagne",
-                "setup_step": 1,
-                "setup_complete": False,
-                "created_at": now_iso,
-                "updated_at": now_iso,
-            }
-            await db.wedding_workspaces.insert_one(wed_doc)
-            member_doc = {
-                "member_id": make_uid("mem"),
-                "wedding_id": wedding_id,
-                "user_id": user["user_id"],
-                "role": "partner",
-                "partner_number": 1,
-                "joined_at": now_iso,
-                "status": "active",
-            }
-            await db.wedding_members.insert_one(member_doc)
-            wed_doc.pop("_id", None)
-            member_doc.pop("_id", None)
-            return {"wedding": wed_doc, "membership": member_doc, "reused": False}
-        # Someone else claimed it just now — refetch and fall through
-        token = await db.access_tokens.find_one({"token_code": code}, {"_id": 0})
+        partner1 = None
+        if member:
+            partner1 = await db.users.find_one({"user_id": member["user_id"]}, {"_id": 0, "password_hash": 0})
+        result.append({"wedding": w, "partner1": partner1})
+    return {"weddings": result}
 
-    # Token is now 'active' -> try to join as partner 2
-    if token and token["status"] == "active":
-        # Atomic: increment only if count < max_members
-        updated = await db.access_tokens.find_one_and_update(
-            {"token_code": code, "current_member_count": {"$lt": token["max_members"]}},
-            {"$inc": {"current_member_count": 1}},
-            return_document=True,
+
+@api.post("/admin/users/{user_id}/approve")
+async def admin_approve_user(user_id: str, payload: AdminApproveIn = AdminApproveIn(), admin: Dict[str, Any] = Depends(require_admin)):
+    target = await db.users.find_one({"user_id": user_id})
+    if not target:
+        raise HTTPException(status_code=404, detail="User not found")
+    if target.get("status") != "pending":
+        raise HTTPException(status_code=400, detail="User is not pending")
+
+    now_iso = now_utc().isoformat()
+    joined_existing = False
+
+    # Priority: an explicit admin override (pair_wedding_id) wins; otherwise use the
+    # wedding_id the user registered with via a partner's invite link, if it's still valid.
+    target_wedding_id = payload.pair_wedding_id or target.get("pending_wedding_id")
+
+    if target_wedding_id:
+        wedding = await db.wedding_workspaces.find_one({"wedding_id": target_wedding_id})
+        if not wedding:
+            raise HTTPException(status_code=404, detail="Wedding workspace to pair with not found")
+        active_count = await db.wedding_members.count_documents(
+            {"wedding_id": target_wedding_id, "status": "active"}
         )
-        if not updated:
-            raise HTTPException(status_code=409, detail="This wedding access is already connected to two accounts.")
-        # Assign partner_number (2 since first was 1)
-        existing = await db.wedding_members.find_one({"wedding_id": token["wedding_id"], "partner_number": 1, "status": "active"}, {"_id": 0})
-        partner_number = 2 if existing else 1
-        member_doc = {
+        if active_count >= 2:
+            raise HTTPException(status_code=400, detail="Wedding workspace already has 2 members")
+        existing_p1 = await db.wedding_members.find_one(
+            {"wedding_id": target_wedding_id, "partner_number": 1, "status": "active"}
+        )
+        partner_number = 2 if existing_p1 else 1
+        await db.wedding_members.insert_one({
             "member_id": make_uid("mem"),
-            "wedding_id": token["wedding_id"],
-            "user_id": user["user_id"],
+            "wedding_id": target_wedding_id,
+            "user_id": user_id,
             "role": "partner",
             "partner_number": partner_number,
-            "joined_at": now_utc().isoformat(),
+            "joined_at": now_iso,
             "status": "active",
-        }
-        await db.wedding_members.insert_one(member_doc)
-        member_doc.pop("_id", None)
-        wed = await db.wedding_workspaces.find_one({"wedding_id": token["wedding_id"]}, {"_id": 0})
-        return {"wedding": wed, "membership": member_doc, "reused": False}
+        })
+        joined_existing = True
 
-    raise HTTPException(status_code=400, detail="Token cannot be activated right now.")
+    if not joined_existing:
+        wedding_id = make_uid("wed")
+        await db.wedding_workspaces.insert_one({
+            "wedding_id": wedding_id,
+            "partner1_name": "", "partner1_nickname": "",
+            "partner2_name": "", "partner2_nickname": "",
+            "wedding_date": None, "date_status": "undecided",
+            "country": "", "city": "",
+            "venue_ceremony": "", "venue_reception": "", "venue_mode": "undecided",
+            "budget_amount": 0, "budget_currency": "IDR",
+            "guest_count": 0,
+            "wedding_types": [], "wedding_styles": [], "wedding_colors": [],
+            "completed_items": [], "challenges": [], "priorities": [],
+            "theme_id": "ivory_champagne",
+            "setup_step": 1, "setup_complete": False,
+            "created_at": now_iso, "updated_at": now_iso,
+        })
+        await db.wedding_members.insert_one({
+            "member_id": make_uid("mem"),
+            "wedding_id": wedding_id,
+            "user_id": user_id,
+            "role": "partner",
+            "partner_number": 1,
+            "joined_at": now_iso,
+            "status": "active",
+        })
+
+    await db.users.update_one({"user_id": user_id}, {"$set": {"status": "approved", "approved_at": now_iso}})
+    return {"ok": True, "joined_existing": joined_existing}
+
+
+@api.post("/admin/users/{user_id}/reject")
+async def admin_reject_user(user_id: str, admin: Dict[str, Any] = Depends(require_admin)):
+    res = await db.users.update_one({"user_id": user_id, "status": "pending"}, {"$set": {"status": "rejected"}})
+    if res.matched_count == 0:
+        raise HTTPException(status_code=404, detail="User not found or not pending")
+    return {"ok": True}
+
+
+# --- TAMBAHAN BARU: ROUTE ADMIN RESET PASSWORD ---
+@api.post("/admin/users/{user_id}/reset-password")
+async def admin_reset_password(
+    user_id: str, 
+    payload: AdminResetPasswordIn = AdminResetPasswordIn(), 
+    admin: Dict[str, Any] = Depends(require_admin)
+):
+    target = await db.users.find_one({"user_id": user_id})
+    if not target:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Validasi jika admin memasukkan password manual
+    if payload.new_password and len(payload.new_password) < 6:
+        raise HTTPException(status_code=400, detail="Password baru minimal 6 karakter")
+
+    # Generate password acak jika admin tidak mengisinya
+    new_password = payload.new_password or secrets.token_urlsafe(8)
+
+    # Hash dan simpan password baru
+    new_hashed = hash_password(new_password)
+    await db.users.update_one(
+        {"user_id": user_id},
+        {"$set": {"password_hash": new_hashed, "updated_at": now_utc().isoformat()}}
+    )
+
+    # Hapus semua sesi user tersebut agar mereka dipaksa logout dan login ulang
+    await db.user_sessions.delete_many({"user_id": user_id})
+
+    return {"ok": True, "new_password": new_password}
+
+
+# ---------- Admin: User Activity (Online Status) ----------
+@api.get("/admin/users/activity")
+async def get_users_activity(admin: Dict[str, Any] = Depends(require_admin)):
+    """
+    Menampilkan semua user yang sudah approved beserta status login (online/offline)
+    dan waktu login terakhir berdasarkan session yang masih aktif.
+    """
+    # Ambil semua user yang statusnya approved
+    users_cursor = db.users.find(
+        {"status": "approved"}, 
+        {"_id": 0, "password_hash": 0}
+    )
+    users = await users_cursor.to_list(1000)
+    
+    now = now_utc()
+    result = []
+    
+    for user in users:
+        # Cari session terbaru untuk user ini, lalu cek kedaluwarsa di Python.
+        # (Membandingkan string ISO via $gt di Mongo rapuh terhadap perbedaan format.)
+        session = await db.user_sessions.find_one(
+            {"user_id": user["user_id"]},
+            sort=[("created_at", -1)]  # Ambil session terbaru
+        )
+        
+        is_online = False
+        last_login = None
+        if session:
+            last_login = session.get("created_at")
+            exp = session.get("expires_at")
+            if isinstance(exp, str):
+                try:
+                    e = datetime.fromisoformat(exp)
+                    if e.tzinfo is None:
+                        e = e.replace(tzinfo=timezone.utc)
+                    is_online = e > now
+                except ValueError:
+                    is_online = False
+        
+        # Cek apakah user adalah admin (untuk ditampilkan di kolom)
+        is_admin = (
+            user.get("email", "").lower() in ADMIN_EMAILS or 
+            user.get("phone", "") in ADMIN_EMAILS
+        )
+        
+        result.append({
+            "user_id": user["user_id"],
+            "name": user.get("name", "-"),
+            "phone": user.get("phone", "-"),
+            "is_online": is_online,
+            "last_login": last_login,  # Waktu login terakhir
+            "is_admin": is_admin,
+        })
+    
+    return {"users": result}
 
 
 # ---------- Wedding setup ----------
@@ -522,6 +758,19 @@ async def get_wedding(ctx: Dict[str, Any] = Depends(require_wedding)):
         if u:
             users[m["user_id"]] = {"user_id": u["user_id"], "email": u.get("email"), "name": u.get("name"), "picture": u.get("picture")}
     return {"wedding": ctx["wedding"], "membership": ctx["membership"], "members": members, "member_users": users}
+
+
+@api.get("/wedding/invite")
+async def get_wedding_invite(ctx: Dict[str, Any] = Depends(require_wedding)):
+    """Returns the ref code to share with a partner so they auto-join this workspace
+    once an admin approves their registration."""
+    active_count = await db.wedding_members.count_documents(
+        {"wedding_id": ctx["wedding"]["wedding_id"], "status": "active"}
+    )
+    return {
+        "ref": ctx["wedding"]["wedding_id"],
+        "full": active_count >= 2,
+    }
 
 
 @api.patch("/wedding")
@@ -933,103 +1182,18 @@ async def dashboard(ctx: Dict[str, Any] = Depends(require_wedding)):
 # ---------- Weddly AI ----------
 @api.post("/ai/chat")
 async def ai_chat(payload: AIChatIn, ctx: Dict[str, Any] = Depends(require_wedding)):
-    from emergentintegrations.llm.chat import LlmChat, UserMessage, TextDelta, StreamDone
-
-    wed = ctx["wedding"]
-    wid = wed["wedding_id"]
-    # Gather compact wedding context
-    tasks = await db.checklist_tasks.find({"wedding_id": wid}, {"_id": 0}).to_list(500)
-    pending_tasks = [t["title"] for t in tasks if t.get("status") != "completed"][:15]
-    items = await db.budget_items.find({"wedding_id": wid}, {"_id": 0}).to_list(500)
-    total_actual = sum(float(i.get("actual", 0) or 0) for i in items)
-    guests = await db.guests.count_documents({"wedding_id": wid})
-
-    context = f"""You are Weddly AI, a warm, empathetic wedding-planning assistant for Indonesian couples.
-Always respond in the user's language (Indonesian or English). Give practical, culturally-aware advice for Indonesian weddings (Akad Nikah, Resepsi, Sangjit, Tea Pai, etc.).
-Never claim to give legal/financial/contractual guarantees. Never invent vendor info.
-
-Wedding context:
-- Couple: {wed.get('partner1_nickname') or wed.get('partner1_name') or 'Partner 1'} & {wed.get('partner2_nickname') or wed.get('partner2_name') or 'Partner 2'}
-- Wedding date: {wed.get('wedding_date') or 'not set yet'}
-- Location: {wed.get('city') or 'not set'}, {wed.get('country') or ''}
-- Budget: Rp {int(wed.get('budget_amount') or 0):,} IDR (spent so far: Rp {int(total_actual):,})
-- Estimated guests: {wed.get('guest_count') or 0} (currently in list: {guests})
-- Wedding types: {', '.join(wed.get('wedding_types') or []) or 'not specified'}
-- Style: {', '.join(wed.get('wedding_styles') or []) or 'not specified'}
-- Priorities/challenges: {', '.join((wed.get('priorities') or []) + (wed.get('challenges') or [])) or 'none'}
-- Top pending tasks: {', '.join(pending_tasks) or 'none pending'}
-"""
-    model_id = payload.model or "claude-sonnet-4-6"
-    if model_id.startswith("gemini"):
-        provider, model_name = "gemini", "gemini-3-flash-preview"
-    else:
-        provider, model_name = "anthropic", "claude-sonnet-4-6"
-
-    lang_hint = "Bahasa Indonesia" if (payload.lang or "").lower().startswith("id") else "English"
-    context += f"\nAlways respond in {lang_hint} unless the user writes in another language."
-
-    chat = LlmChat(
-        api_key=EMERGENT_LLM_KEY,
-        session_id=f"{wid}-{ctx['user']['user_id']}",
-        system_message=context,
-    ).with_model(provider, model_name)
-
-    async def gen():
-        try:
-            async for ev in chat.stream_message(UserMessage(text=payload.message)):
-                if isinstance(ev, TextDelta):
-                    yield ev.content
-                elif isinstance(ev, StreamDone):
-                    break
-        except Exception as e:
-            logger.exception("AI stream failed")
-            yield f"\n\n[Weddly AI encountered an issue: {str(e)[:120]}]"
-
-    return StreamingResponse(
-        gen(),
-        media_type="text/plain; charset=utf-8",
-        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
-    )
+    raise HTTPException(status_code=501, detail="Fitur AI chat sedang dinonaktifkan sementara. Silakan coba lagi nanti.")
 
 
-# ---------- Startup: seed sandbox token ----------
-@app.on_event("startup")
-async def on_startup():
-    # Ensure indexes
-    await db.users.create_index("email", unique=True)
-    await db.user_sessions.create_index("session_token", unique=True)
-    await db.access_tokens.create_index("token_code", unique=True)
-    await db.wedding_members.create_index([("wedding_id", 1), ("user_id", 1)], unique=True)
-    # Seed sandbox demo token if missing
-    existing = await db.access_tokens.find_one({"token_code": "WDL-DEMO-2026-LOVE"})
-    if not existing:
-        await db.access_tokens.insert_one({
-            "token_id": make_uid("tok"),
-            "token_code": "WDL-DEMO-2026-LOVE",
-            "status": "unused",
-            "package": "weddly-sandbox",
-            "max_members": 2,
-            "current_member_count": 0,
-            "wedding_id": None,
-            "created_at": now_utc().isoformat(),
-            "activated_at": None,
-            "expires_at": None,
-            "revoked_at": None,
-            "metadata": {"seeded": True},
-        })
-        logger.info("Seeded sandbox token WDL-DEMO-2026-LOVE")
-
-
-@app.on_event("shutdown")
-async def on_shutdown():
-    client.close()
+# ---------- Startup / Shutdown ----------
+# (Handled by the FastAPI lifespan context defined above)
 
 
 app.include_router(api)
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
-    allow_origins=os.environ.get("CORS_ORIGINS", "*").split(","),
+    allow_origins=os.environ.get("CORS_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000").split(","),
     allow_methods=["*"],
     allow_headers=["*"],
 )

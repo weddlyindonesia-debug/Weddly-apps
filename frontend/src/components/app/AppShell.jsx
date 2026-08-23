@@ -1,6 +1,7 @@
 import { NavLink } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
-import { LayoutDashboard, CheckSquare, WalletCards, Users, Briefcase, CalendarClock, Sparkles, Settings, Heart, LogOut, ShieldCheck } from "lucide-react";
+// Hapus "Heart" dari import karena sudah tidak dipakai
+import { LayoutDashboard, CheckSquare, WalletCards, Users, Briefcase, CalendarClock, Sparkles, Settings, LogOut, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/context/LanguageContext";
 import LanguageToggle from "@/components/app/LanguageToggle";
@@ -22,16 +23,23 @@ export default function AppShell({ children }) {
   ];
 
   return (
-    <div className="min-h-screen flex bg-background">
-      <aside className="hidden md:flex md:flex-col w-64 shrink-0 border-r border-border bg-card/60 backdrop-blur-md">
+    // Tambahkan h-screen dan overflow-hidden agar tinggi container pas dengan layar
+    <div className="h-screen flex bg-background overflow-hidden">
+      
+      {/* 1. PERUBAHAN SIDEBAR: Tambahkan sticky top-0 h-screen agar terkunci */}
+      <aside className="hidden md:flex md:flex-col w-64 shrink-0 border-r border-border bg-card/60 backdrop-blur-md sticky top-0 h-screen">
+        
+        {/* 2. PERUBAHAN LOGO: Ganti icon hati dengan gambar logo asli */}
         <div className="p-6">
-          <div className="flex items-center gap-2 mb-1">
-            <div className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary"><Heart className="h-4 w-4" /></div>
-            <span className="font-serif text-xl">Weddly</span>
-          </div>
-          <div className="mt-1 text-xs text-muted-foreground truncate">{p1} & {p2}</div>
+          {/* Pastikan file logo Anda bernama 'weddly-logo.png' dan ada di folder 'frontend/public' */}
+          <img 
+            src="/weddly-logo.png" 
+            alt="Logo Weddly" 
+            className="w-24 h-auto object-contain mx-auto block"
+          />
         </div>
-        <nav className="px-3 space-y-1 flex-1">
+
+        <nav className="px-3 space-y-1 flex-1 mt-0">
           {NAV.map((n) => (
             <NavLink key={n.path} to={n.path} data-testid={n.testid} className={({ isActive }) => `flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors duration-150 ${isActive ? "bg-primary text-primary-foreground" : "text-foreground hover:bg-accent"}`}>
               <n.icon className="h-4 w-4" /> {n.name}
@@ -43,6 +51,7 @@ export default function AppShell({ children }) {
             </NavLink>
           )}
         </nav>
+        
         <div className="p-3 border-t border-border space-y-2">
           <div className="px-2"><LanguageToggle /></div>
           <div className="flex items-center gap-3 px-2 py-2">
@@ -56,12 +65,13 @@ export default function AppShell({ children }) {
         </div>
       </aside>
 
-      <main className="flex-1 min-w-0 pb-20 md:pb-0">
+      {/* Bagian konten utama bisa di-scroll */}
+      <main className="flex-1 min-w-0 overflow-y-auto pb-20 md:pb-0">
         {children}
       </main>
 
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-card/95 backdrop-blur-xl border-t border-border h-16 flex items-center justify-around px-2">
-        {NAV.slice(0, 4).concat(NAV[6]).map((n) => (
+        {NAV.filter((n) => ["/dashboard", "/checklist", "/budget", "/guests", "/ai"].includes(n.path)).map((n) => (
           <NavLink key={n.path} to={n.path} data-testid={`mobile-${n.testid}`} className={({ isActive }) => `flex flex-col items-center justify-center gap-0.5 text-[10px] px-2 py-1 rounded-lg ${isActive ? "text-primary" : "text-muted-foreground"}`}>
             <n.icon className="h-5 w-5" />
             {n.name}

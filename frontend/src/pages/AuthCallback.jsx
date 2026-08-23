@@ -22,9 +22,12 @@ export default function AuthCallback() {
         await api.post("/auth/session", { session_id });
         // Clear hash
         window.history.replaceState(null, "", window.location.pathname);
-        const data = await refresh();
-        if (!data?.membership) navigate("/activate", { replace: true });
-        else if (!data?.wedding?.setup_complete) navigate("/setup", { replace: true });
+        const data = await refresh(); // null berarti request /auth/me gagal
+        if (!data) {
+          // Gagal sesaat (jaringan/server): jangan dianggap belum aktiv, kembali ke login
+          navigate("/login?error=session", { replace: true });
+        } else if (!data.membership) navigate("/activate", { replace: true });
+        else if (!data.wedding?.setup_complete) navigate("/setup", { replace: true });
         else navigate("/dashboard", { replace: true });
       } catch (e) {
         navigate("/login?error=session", { replace: true });

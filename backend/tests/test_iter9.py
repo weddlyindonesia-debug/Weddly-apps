@@ -3,16 +3,21 @@ import os
 import time
 import subprocess
 import json
+from pathlib import Path
 import pytest
 import requests
 
 BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "").rstrip("/")
 if not BASE_URL:
-    # fallback: read frontend/.env
-    with open("/app/frontend/.env") as f:
-        for line in f:
-            if line.startswith("REACT_APP_BACKEND_URL="):
-                BASE_URL = line.split("=", 1)[1].strip().rstrip("/")
+    # fallback: read frontend/.env relative to this repo (portable across OS)
+    _env = Path(__file__).resolve().parents[2] / "frontend" / ".env"
+    if _env.exists():
+        with open(_env) as f:
+            for line in f:
+                if line.startswith("REACT_APP_BACKEND_URL="):
+                    BASE_URL = line.split("=", 1)[1].strip().rstrip("/")
+if not BASE_URL:
+    BASE_URL = "http://localhost:8000"
 ADMIN_KEY = "weddly-admin-2026-secure"
 
 

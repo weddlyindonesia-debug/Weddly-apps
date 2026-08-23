@@ -25,7 +25,8 @@ const NumberInput = forwardRef(function NumberInput(
   { value, onChange, prefix, className = "", ...rest },
   ref
 ) {
-  const display = value === 0 || value === "" || value === null || value === undefined ? "" : formatIDN(value);
+  // Nilai 0 adalah nilai sah — tampilkan "0", bukan kosong
+  const display = value === "" || value === null || value === undefined ? "" : formatIDN(value);
   return (
     <div className="relative">
       {prefix && (

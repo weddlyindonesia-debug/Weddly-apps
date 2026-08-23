@@ -2,15 +2,23 @@
 import os
 import re
 import uuid
+from pathlib import Path
 import pytest
 import requests
 from datetime import datetime, timezone, timedelta
 from pymongo import MongoClient
 
-with open("/app/frontend/.env") as f:
-    for line in f:
-        if line.startswith("REACT_APP_BACKEND_URL="):
-            BASE = line.split("=", 1)[1].strip().rstrip("/")
+BASE = os.environ.get("REACT_APP_BACKEND_URL", "").rstrip("/")
+if not BASE:
+    # fallback: read frontend/.env relative to this repo (portable across OS)
+    _env = Path(__file__).resolve().parents[2] / "frontend" / ".env"
+    if _env.exists():
+        with open(_env) as f:
+            for line in f:
+                if line.startswith("REACT_APP_BACKEND_URL="):
+                    BASE = line.split("=", 1)[1].strip().rstrip("/")
+if not BASE:
+    BASE = "http://localhost:8000"
 API = f"{BASE}/api"
 ADMIN_KEY = "weddly-admin-2026-secure"
 ADMIN_EMAIL = "weddlyindonesia@gmail.com"

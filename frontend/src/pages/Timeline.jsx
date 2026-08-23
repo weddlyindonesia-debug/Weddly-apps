@@ -18,16 +18,31 @@ export default function Timeline() {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ title: "", date: "", start_time: "", end_time: "", location: "", category: "general", notes: "" });
 
-  const load = () => api.get("/timeline").then(({ data }) => setEvents(data.events));
+  const load = () => api.get("/timeline").then(({ data }) => setEvents(data.events ?? [])).catch((e) => {
+    toast.error(e?.response?.data?.detail || "Gagal memuat rundown acara");
+  });
   useEffect(() => { load(); }, []);
 
   const add = async () => {
     if (!form.title.trim() || !form.date) return toast.error(t("time.required"));
-    await api.post("/timeline", form); setOpen(false);
-    setForm({ title: "", date: "", start_time: "", end_time: "", location: "", category: "general", notes: "" });
-    load(); toast.success(t("time.added"));
+    try {
+      await api.post("/timeline", form);
+      setOpen(false);
+      setForm({ title: "", date: "", start_time: "", end_time: "", location: "", category: "general", notes: "" });
+      load();
+      toast.success(t("time.added"));
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Gagal menambah acara");
+    }
   };
-  const remove = async (e) => { await api.delete(`/timeline/${e.event_id}`); load(); };
+  const remove = async (e) => {
+    try {
+      await api.delete(`/timeline/${e.event_id}`);
+      load();
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || "Gagal menghapus acara");
+    }
+  };
 
   return (
     <div className="max-w-5xl mx-auto p-6 md:p-10">

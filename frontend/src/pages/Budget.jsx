@@ -17,16 +17,31 @@ export default function Budget() {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ name: "", category: "Venue", planned: 0, actual: 0, paid: 0, status: "quotation", vendor: "" });
 
-  const load = () => api.get("/budget").then(({ data }) => setData(data));
+  const load = () => api.get("/budget").then(({ data }) => setData(data)).catch((e) => {
+    toast.error(e?.response?.data?.detail || "Gagal memuat data budget");
+  });
   useEffect(() => { load(); }, []);
 
   const add = async () => {
     if (!form.name.trim()) return toast.error(t("budget.name_required"));
-    await api.post("/budget", form); setOpen(false);
-    setForm({ name: "", category: "Venue", planned: 0, actual: 0, paid: 0, status: "quotation", vendor: "" });
-    load(); toast.success(t("budget.added"));
+    try {
+      await api.post("/budget", form);
+      setOpen(false);
+      setForm({ name: "", category: "Venue", planned: 0, actual: 0, paid: 0, status: "quotation", vendor: "" });
+      load();
+      toast.success(t("budget.added"));
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Gagal menambah item");
+    }
   };
-  const remove = async (i) => { await api.delete(`/budget/${i.item_id}`); load(); };
+  const remove = async (i) => {
+    try {
+      await api.delete(`/budget/${i.item_id}`);
+      load();
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Gagal menghapus item");
+    }
+  };
 
   const totals = data.totals || {};
   return (
@@ -75,7 +90,7 @@ export default function Budget() {
         <Card className="p-5 rounded-2xl"><div className="text-xs uppercase tracking-widest text-muted-foreground">{t("budget.remaining")}</div><div className={`font-serif text-2xl mt-2 ${(totals.remaining || 0) < 0 ? "text-destructive" : ""}`}>{idr(totals.remaining)}</div></Card>
       </div>
 
-      {data.items.length === 0 ? (
+      {(data.items || []).length === 0 ? (
         <Card className="p-10 text-center text-muted-foreground rounded-2xl">{t("budget.empty")}</Card>
       ) : (
         <Card className="rounded-2xl overflow-hidden">
@@ -85,7 +100,7 @@ export default function Budget() {
                 <tr><th className="text-left px-4 py-3">{t("budget.col_item")}</th><th className="text-left px-4 py-3">{t("budget.col_category")}</th><th className="text-right px-4 py-3">{t("budget.planned")}</th><th className="text-right px-4 py-3">{t("budget.actual")}</th><th className="text-right px-4 py-3">{t("budget.paid")}</th><th className="text-left px-4 py-3">{t("common.status")}</th><th></th></tr>
               </thead>
               <tbody>
-                {data.items.map((i) => (
+                {(data.items || []).map((i) => (
                   <tr key={i.item_id} className="border-t border-border" data-testid="budget-category-row">
                     <td className="px-4 py-3 font-medium">{i.name}{i.vendor && <div className="text-xs text-muted-foreground">{i.vendor}</div>}</td>
                     <td className="px-4 py-3">{i.category}</td>

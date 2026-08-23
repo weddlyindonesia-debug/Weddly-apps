@@ -29,13 +29,22 @@ export default function Vendors() {
   const [editForm, setEditForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
 
-  const load = () => api.get("/vendors").then(({ data }) => setVendors(data.vendors));
+  const load = () => api.get("/vendors").then(({ data }) => setVendors(data.vendors ?? [])).catch((e) => {
+    toast.error(e?.response?.data?.detail || "Gagal memuat vendor");
+  });
   useEffect(() => { load(); }, []);
 
   const add = async () => {
     if (!addForm.name.trim()) return toast.error(t("vendors.name_required"));
-    await api.post("/vendors", addForm); setAddOpen(false); setAddForm(emptyForm);
-    load(); toast.success(t("vendors.added"));
+    try {
+      await api.post("/vendors", addForm);
+      setAddOpen(false);
+      setAddForm(emptyForm);
+      load();
+      toast.success(t("vendors.added"));
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Gagal menambah vendor");
+    }
   };
 
   const openDetail = (v) => {
@@ -67,9 +76,14 @@ export default function Vendors() {
   const removeDetail = async () => {
     if (!selected) return;
     if (!window.confirm(t("vendors.confirm_delete"))) return;
-    await api.delete(`/vendors/${selected.vendor_id}`);
-    setDetailOpen(false);
-    load(); toast.success(t("vendors.deleted"));
+    try {
+      await api.delete(`/vendors/${selected.vendor_id}`);
+      setDetailOpen(false);
+      load();
+      toast.success(t("vendors.deleted"));
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Gagal menghapus vendor");
+    }
   };
 
   const filtered = filter === "all" ? vendors : vendors.filter((v) => v.category === filter);

@@ -1,16 +1,38 @@
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Heart, Sparkles, ShieldCheck } from "lucide-react";
 import { useT } from "@/context/LanguageContext";
 import LanguageToggle from "@/components/app/LanguageToggle";
+import { toast } from "sonner";
+import { api } from "@/lib/api";
+import { useAuth } from "@/context/AuthContext";
 
-// REMINDER: DO NOT HARDCODE THE URL, OR ADD ANY FALLBACKS OR REDIRECT URLS, THIS BREAKS THE AUTH
 export default function Login() {
   const { t } = useT();
-  const handleGoogle = () => {
-    const redirectUrl = window.location.origin + "/dashboard";
-    window.location.href = `https://auth.emergentagent.com/?redirect=${encodeURIComponent(redirectUrl)}`;
-  };
+  const navigate = useNavigate();
+  const { refresh } = useAuth();
+  const [form, setForm] = useState({ phone: "", password: "" });
+  const [loading, setLoading] = useState(false);
   const [heroLine1, heroLine2] = t("brand.tagline_hero").split("\n");
+
+  const submit = async (e) => {
+    e.preventDefault();
+    if (!form.phone.trim() || !form.password) return toast.error("Nomor HP dan password wajib diisi");
+    setLoading(true);
+    try {
+      await api.post("/auth/login", form);
+      await refresh();
+      navigate("/dashboard");
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || "Login gagal");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen w-full grid md:grid-cols-2 relative">
       <div className="absolute top-4 right-4 z-30 md:top-6 md:right-6">
@@ -34,7 +56,7 @@ export default function Login() {
         </div>
       </div>
       <div className="flex items-center justify-center p-8 md:p-16 bg-background">
-        <div className="w-full max-w-md">
+        <form onSubmit={submit} className="w-full max-w-md">
           <div className="mb-10 flex items-center gap-2">
             <div className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
               <Heart className="h-5 w-5" />
@@ -43,23 +65,27 @@ export default function Login() {
           </div>
           <h2 className="font-serif text-3xl sm:text-4xl mb-3">{t("login.welcome")}</h2>
           <p className="text-muted-foreground mb-8 leading-relaxed">
-            {t("login.intro")}
+            Masuk dengan nomor HP dan password Anda.
           </p>
-          <Button
-            data-testid="google-signin-button"
-            onClick={handleGoogle}
-            className="w-full h-12 rounded-full text-base font-medium"
-          >
-            <svg viewBox="0 0 24 24" className="mr-2 h-5 w-5" aria-hidden>
-              <path fill="#EA4335" d="M12 10.2v3.9h5.4c-.24 1.4-1.7 4.1-5.4 4.1-3.24 0-5.9-2.7-5.9-6s2.66-6 5.9-6c1.85 0 3.1.8 3.8 1.5l2.6-2.5C16.9 3.5 14.7 2.5 12 2.5 6.75 2.5 2.5 6.75 2.5 12S6.75 21.5 12 21.5c6.9 0 11.5-4.85 11.5-11.7 0-.8-.1-1.4-.2-2.1H12z"/>
-            </svg>
-            {t("login.google_btn")}
+
+          <div className="space-y-3 mb-6">
+            <div><Label>Nomor HP</Label><Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="08123456789" /></div>
+            <div><Label>Password</Label><Input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} /></div>
+          </div>
+
+          <Button type="submit" disabled={loading} className="w-full h-12 rounded-full text-base font-medium">
+            {loading ? "Memproses..." : "Masuk"}
           </Button>
+
+          <p className="text-center text-sm text-muted-foreground mt-4">
+            Belum punya akun? <Link to="/register" className="text-primary font-medium">Daftar</Link>
+          </p>
+
           <div className="mt-8 space-y-3 text-sm text-muted-foreground">
             <div className="flex items-start gap-2"><ShieldCheck className="mt-0.5 h-4 w-4 text-primary" /> {t("login.secure_note")}</div>
             <div className="flex items-start gap-2"><Sparkles className="mt-0.5 h-4 w-4 text-primary" /> {t("login.license_note")}</div>
           </div>
-        </div>
+        </form>
       </div>
     </div>
   );
